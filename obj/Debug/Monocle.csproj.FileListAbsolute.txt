@@ -1,0 +1,5 @@
+E:\dev\Monocle\Monocle\obj\Debug\ResolveAssemblyReference.cache
+E:\dev\Monocle\Monocle\bin\Debug\Monocle.dll
+E:\dev\Monocle\Monocle\bin\Debug\Monocle.pdb
+E:\dev\Monocle\Monocle\obj\Debug\Monocle.dll
+E:\dev\Monocle\Monocle\obj\Debug\Monocle.pdb

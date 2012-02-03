@@ -44,15 +44,25 @@
     <Compile Include="ColumnAttribute.cs" />
     <Compile Include="CrudObject.cs" />
     <Compile Include="Database.cs" />
+    <Compile Include="HyperPropertyDescriptor\ChainingPropertyDescriptor.cs" />
+    <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptionProvider.cs" />
+    <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptor.cs" />
     <Compile Include="MonocleDb.cs" />
     <Compile Include="DbObject.cs" />
     <Compile Include="IMonocleLogWriter.cs" />
     <Compile Include="Parameter.cs" />
+    <Compile Include="Profiler\DbProfiler.cs" />
+    <Compile Include="Profiler\DbProfiling.cs" />
+    <Compile Include="Profiler\DbProfilingResults.cs" />
+    <Compile Include="Profiler\IDbProfiler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqlHelper.cs" />
     <Compile Include="SqlRunner.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="ViewObject.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

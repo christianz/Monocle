@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Data;
 using System.Data.SqlClient;
+using Monocle.Profiler;
 
 namespace Monocle
 {
     public class SqlRunner : IDisposable
     {
+        private IDbProfiler _profiler;
         private readonly SqlConnection _sqlConn;
         private readonly SqlCommand _command;
 
@@ -15,6 +17,11 @@ namespace Monocle
 
             _command = command;
             _command.Connection = _sqlConn;
+        }
+
+        public void Profile(IDbProfiler profiler)
+        {
+            _profiler = profiler;
         }
 
         private static SqlConnection CreateConnection(string connString)
@@ -28,13 +35,24 @@ namespace Monocle
 
             _sqlConn.Open();
 
+            if (_profiler != null)
+            {
+                _profiler.StartProfiling(_command);
+            }
+
             using (var reader = _command.ExecuteReader())
             {
+                if (_profiler != null)
+                {
+                    _profiler.EndProfiling();
+                    DbProfiling.AddResult(_profiler.Results);
+                }
+
                 var colNum = reader.FieldCount;
 
                 for (var i = 0; i < colNum; i++)
                 {
-                    var fldType = reader.GetFieldType(i) ?? typeof (string);
+                    var fldType = reader.GetFieldType(i) ?? typeof(string);
 
                     dt.Columns.Add(reader.GetName(i), fldType);
                 }
@@ -58,7 +76,18 @@ namespace Monocle
         {
             _sqlConn.Open();
 
+            if (_profiler != null)
+            {
+                _profiler.StartProfiling(_command);
+            }
+
             _command.ExecuteNonQuery();
+
+            if (_profiler != null)
+            {
+                _profiler.EndProfiling();
+                DbProfiling.AddResult(_profiler.Results);
+            }
 
             _sqlConn.Close();
         }

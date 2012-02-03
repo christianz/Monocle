@@ -4,8 +4,10 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 using System.Runtime.Caching;
 using System.Text;
+using Monocle.Profiler;
 
 namespace Monocle
 {
@@ -14,6 +16,7 @@ namespace Monocle
         private const int WhereClauseDefaultStringBuilderSize = 128;
 
         private static bool _useCaching;
+        private static bool _useProfiling;
         private static string _connectionString;
         private static IMonocleLogWriter _logWriter;
 
@@ -32,6 +35,11 @@ namespace Monocle
             Initialize(connectionString, useCaching, null);
         }
 
+        public static void Initialize(string connectionString, bool useCaching, bool useProfiling)
+        {
+            Initialize(connectionString, useCaching, null);
+        }
+
         public static void Initialize(string connectionString, IMonocleLogWriter logWriter)
         {
             Initialize(connectionString, true, logWriter);
@@ -39,8 +47,14 @@ namespace Monocle
 
         public static void Initialize(string connectionString, bool useCaching, IMonocleLogWriter logWriter)
         {
+            Initialize(connectionString, true, false, logWriter);
+        }
+
+        public static void Initialize(string connectionString, bool useCaching, bool useProfiling, IMonocleLogWriter logWriter)
+        {
             _connectionString = connectionString;
             _useCaching = useCaching;
+            _useProfiling = useProfiling;
             _logWriter = logWriter;
         }
 
@@ -73,7 +87,9 @@ namespace Monocle
             Execute(cmdText, null);
         }
 
+// ReSharper disable MethodOverloadWithOptionalParameter
         public static void Execute(string cmdText, params SqlParameter[] parameters)
+// ReSharper restore MethodOverloadWithOptionalParameter
         {
             ExecuteDataTable(cmdText, false, parameters);
         }
@@ -112,7 +128,24 @@ namespace Monocle
         public static object ChangeType(object value, Type type)
         {
             if (value == DBNull.Value)
+            {
+                if (type == typeof(Guid))
+                    return Guid.Empty;
+
+                if (type == typeof(Int32))
+                    return 0;
+
+                if (type == typeof(Single))
+                    return 0F;
+
+                if (type == typeof(Boolean))
+                    return false;
+
+                if (type == typeof(DateTime))
+                    return DateTime.MinValue;
+
                 return null;
+            }
 
             if (value == null)
             {
@@ -122,14 +155,14 @@ namespace Monocle
                 return null;
             }
 
-            if (type == value.GetType()) 
+            if (type == value.GetType())
                 return value;
 
             if (type.IsEnum)
             {
                 if (value is string)
                     return Enum.Parse(type, value as string);
-                   
+
                 return Enum.ToObject(type, value);
             }
 
@@ -137,17 +170,10 @@ namespace Monocle
             {
                 var innerType = type.GetGenericArguments()[0];
                 var innerValue = ChangeType(value, innerType);
-
-                return Activator.CreateInstance(type, new [] { innerValue });
+                return Activator.CreateInstance(type, new[] { innerValue });
             }
 
-            if (value is string && type == typeof(Guid)) 
-                return new Guid(value as string);
-
-            if (value is string && type == typeof(Version)) 
-                return new Version(value as string);
-
-            if (!(value is IConvertible)) 
+            if (!(value is IConvertible))
                 return value;
 
             return Convert.ChangeType(value, type);
@@ -166,26 +192,19 @@ namespace Monocle
 
             if (_useCaching && Cache.Contains(cacheId))
             {
-                if (_logWriter != null)
-                    WriteToLog("Found object in cache: " + cacheId);
-
                 var cacheObj = Cache[cacheId];
 
                 if (cacheObj != null && cacheObj.GetType() == typeof(T))
                     return (T)Cache[cacheId];
             }
 
-            var result = Execute<T>("select top 1 * from [dbo].[" + tableName + "] where [id]=@id", new [] { new SqlParameter("id", id) });
+            var result = Execute<T>("select top 1 * from [" + tableName + "] where [id] = @id", new[] { new SqlParameter("id", id) });
 
             if (_useCaching)
-            {
-                if (_logWriter != null)
-                    WriteToLog("Saved object in cache: " + cacheId);
+                Cache[cacheId] = result;
 
-                Cache.Add(new CacheItem(cacheId, result), new CacheItemPolicy { SlidingExpiration = new TimeSpan(1, 0, 0) });
-            }
-
-            result.ExistsInDb = true;
+            if (result != null)
+                result.ExistsInDb = true;
 
             return result;
         }
@@ -208,19 +227,22 @@ namespace Monocle
             return result;
         }
 
-        private static DataTable ExecuteDataTable(string cmdText, bool expectsResults, SqlParameter[] parameters)
+        private static DataTable ExecuteDataTable(string cmdText, bool expectsResults, IEnumerable<SqlParameter> parameters)
         {
             var isStoredProcedure = IsStoredProcedure(cmdText);
 
             var cmd = new SqlCommand(cmdText) { CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text };
 
-            cmd.Parameters.AddRange(parameters ?? new SqlParameter[0]);
-
-            if (_logWriter != null)
-                WriteToLog(cmd);
+            cmd.Parameters.AddRange((parameters ?? new List<SqlParameter>()).ToArray());
 
             using (var sqlRunner = new SqlRunner(_connectionString, cmd))
             {
+                if (_useProfiling)
+                {
+                    var profiler = new DbProfiler();
+                    sqlRunner.Profile(profiler);
+                }
+
                 if (expectsResults)
                     return sqlRunner.ExecuteDataTable();
 
@@ -249,7 +271,7 @@ namespace Monocle
             }
 
             var str = sb.ToString();
-            str = str.Remove(str.LastIndexOf(" and "));
+            str = str.Remove(str.LastIndexOf(" and ", StringComparison.Ordinal));
 
             return str;
         }

@@ -7,36 +7,51 @@ namespace Monocle
 {
     public abstract class CrudObject
     {
+        private static readonly Dictionary<Type, string> ClassTableDictionary = new Dictionary<Type, string>();
+
         public abstract Guid Id { get; set; }
-        public bool ExistsInDb { get; set; }
+        internal bool? ExistsInDb { get; set; }
         private string TableName { get; set; }
+        private readonly Type _type;
 
         protected string CacheId
         {
-            get
-            {
-                return TableName + "_" + Id;
-            }
+            get { return TableName + "_" + Id; }
         }
-        
+
         protected CrudObject()
         {
-            var prop = GetType().GetCustomAttributes(typeof (TableAttribute), false);
-            if (prop.Length != 1)
-                throw new ArgumentException("Type has no TableAttribute.");
+            string tableName;
+            _type = GetType();
 
-            var table = (TableAttribute) prop[0];
+            if (!ClassTableDictionary.TryGetValue(_type, out tableName))
+            {
+                var prop = _type.GetCustomAttributes(typeof (TableAttribute), false);
+                if (prop.Length != 1)
+                    throw new ArgumentException("Type has no TableAttribute.");
 
-            TableName = table.TableName;
+                tableName = ((TableAttribute) prop[0]).TableName;
+                ClassTableDictionary[_type] = tableName;
+            }
 
-            ExistsInDb = false;
+            TableName = tableName;
         }
 
         public virtual void Save()
         {
-            var parameters = SqlHelper.Transform(this).Where(p => p.Value != null).ToList();
+            var parameters = SqlHelper.Transform(_type, this).Where(p => p.Value != null).ToArray();
 
-            var query = ExistsInDb ? GetUpdateStatement(parameters) : GetInsertStatement(parameters);
+            string query;
+
+            if (ExistsInDb.HasValue)
+            {
+                query = ExistsInDb.Value ? GetUpdateStatement(parameters) : GetInsertStatement(parameters);
+            }
+            else
+            {
+                query = "IF EXISTS (SELECT TOP 1 * FROM [dbo].[" + TableName + "] WHERE [Id]=@Id) " +
+                        GetUpdateStatement(parameters) + " ELSE " + GetInsertStatement(parameters);
+            }
 
             MonocleDb.Execute(query, parameters);
             MonocleDb.SetDirty(CacheId);
@@ -46,9 +61,9 @@ namespace Monocle
 
         public virtual void Delete()
         {
-            var query = "DELETE TOP (1) FROM [dbo].[" + TableName + "] WHERE [Id]=@id";
+            var query = "DELETE TOP (1) FROM [dbo].[" + TableName + "] WHERE [Id]='" + Id + "'";
 
-            MonocleDb.Execute(query, new { Id });
+            MonocleDb.Execute(query);
             MonocleDb.SetDirty(CacheId);
 
             ExistsInDb = false;
@@ -63,32 +78,34 @@ namespace Monocle
                 query += parameter.ParameterName + "=@" + parameter.ParameterName + ",";
             }
 
-            query = query.Remove(query.LastIndexOf(","));
+            query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));
 
-            query += " WHERE [Id]=@Id";
+            query += " WHERE [Id] = @Id";
 
             return query;
         }
 
-        private string GetInsertStatement(List<SqlParameter> parameters)
+        private string GetInsertStatement(IEnumerable<SqlParameter> parameters)
         {
+            var lParameters = parameters.ToList();
+
             var query = "INSERT INTO [dbo].[" + TableName + "] (";
 
-            foreach (var parameter in parameters)
+            foreach (var parameter in lParameters)
             {
                 query += parameter.ParameterName + ",";
             }
 
-            query = query.Remove(query.LastIndexOf(","));
+            query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));
 
             query += ") VALUES (";
 
-            foreach (var parameter in parameters)
+            foreach (var parameter in lParameters)
             {
                 query += "@" + parameter.ParameterName + ",";
             }
 
-            query = query.Remove(query.LastIndexOf(","));
+            query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));
 
             query += ")";
 

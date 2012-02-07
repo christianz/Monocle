@@ -200,7 +200,7 @@ namespace Monocle
 
             var result = Execute<T>("select top 1 * from [" + tableName + "] where [id] = @id", new[] { new SqlParameter("id", id) });
 
-            if (_useCaching)
+            if (_useCaching && result != null)
                 Cache[cacheId] = result;
 
             if (result != null)

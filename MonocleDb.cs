@@ -60,7 +60,7 @@ namespace Monocle
 
         public static DataTable ExecuteDataTable(string cmdText, object parameters)
         {
-            var sqlParams = GetSqlParameters(parameters);
+            var sqlParams = GetParameters(parameters);
 
             return ExecuteDataTable(cmdText, true, sqlParams);
         }
@@ -77,9 +77,9 @@ namespace Monocle
 
         public static IEnumerable<T> ExecuteList<T>(string cmdText, object parameters) where T : class, new()
         {
-            var dt = ExecuteDataTable(cmdText, true, GetSqlParameters(parameters));
+            var dt = ExecuteDataTable(cmdText, true, GetParameters(parameters));
 
-            return SqlHelper.TransformList<T>(dt);
+            return PersistableHelper.TransformList<T>(dt);
         }
 
         public static void Execute(string cmdText)
@@ -88,7 +88,7 @@ namespace Monocle
         }
 
 // ReSharper disable MethodOverloadWithOptionalParameter
-        public static void Execute(string cmdText, params SqlParameter[] parameters)
+        public static void Execute(string cmdText, params Parameter[] parameters)
 // ReSharper restore MethodOverloadWithOptionalParameter
         {
             ExecuteDataTable(cmdText, false, parameters);
@@ -96,12 +96,12 @@ namespace Monocle
 
         public static void Execute(string cmdText, object parameters)
         {
-            ExecuteDataTable(cmdText, false, GetSqlParameters(parameters));
+            ExecuteDataTable(cmdText, false, GetParameters(parameters));
         }
 
         public static T Execute<T>(string cmdText, object parameters) where T : class, new()
         {
-            return SqlHelper.Transform<T>(ExecuteDataTable(cmdText, true, GetSqlParameters(parameters)));
+            return PersistableHelper.Transform<T>(ExecuteDataTable(cmdText, true, GetParameters(parameters)));
         }
 
         public static T Execute<T>(string cmdText) where T : class, new()
@@ -111,7 +111,7 @@ namespace Monocle
 
         public static T ExecuteScalar<T>(string cmdText, object parameters)
         {
-            var dt = ExecuteDataTable(cmdText, true, GetSqlParameters(parameters));
+            var dt = ExecuteDataTable(cmdText, true, GetParameters(parameters));
 
             if (dt.Rows.Count < 1)
                 return default(T);
@@ -179,7 +179,7 @@ namespace Monocle
             return Convert.ChangeType(value, type);
         }
 
-        public static T FindById<T>(Guid id) where T : CrudObject, new()
+        public static T FindById<T>(Guid id) where T : Persistable, new()
         {
             var prop = typeof(T).GetCustomAttributes(typeof(TableAttribute), false);
 
@@ -198,7 +198,7 @@ namespace Monocle
                     return (T)Cache[cacheId];
             }
 
-            var result = Execute<T>("select top 1 * from [" + tableName + "] where [id] = @id", new[] { new SqlParameter("id", id) });
+            var result = Execute<T>("select top 1 * from [" + tableName + "] where [id] = @id", new[] { new Parameter("id", id) });
 
             if (_useCaching && result != null)
                 Cache[cacheId] = result;
@@ -209,9 +209,9 @@ namespace Monocle
             return result;
         }
 
-        public static T FindBy<T>(object parameters) where T : CrudObject, new()
+        public static T FindBy<T>(object parameters) where T : Persistable, new()
         {
-            var sqlParams = GetSqlParameters(parameters);
+            var sqlParams = GetParameters(parameters);
 
             var prop = typeof(T).GetCustomAttributes(typeof(TableAttribute), false);
 
@@ -227,19 +227,20 @@ namespace Monocle
             return result;
         }
 
-        private static DataTable ExecuteDataTable(string cmdText, bool expectsResults, IEnumerable<SqlParameter> parameters)
+        private static DataTable ExecuteDataTable(string cmdText, bool expectsResults, IEnumerable<Parameter> parameters)
         {
             var isStoredProcedure = IsStoredProcedure(cmdText);
 
             var cmd = new SqlCommand(cmdText) { CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text };
 
-            cmd.Parameters.AddRange((parameters ?? new List<SqlParameter>()).ToArray());
+            foreach (var p in parameters ?? new List<Parameter>(0))
+                cmd.Parameters.AddWithValue(p.Name, p.Value);
 
-            using (var sqlRunner = new SqlRunner(_connectionString, cmd))
+            using (var sqlRunner = new MsSqlCommand(_connectionString, cmd))
             {
                 if (_useProfiling)
                 {
-                    var profiler = new DbProfiler();
+                    var profiler = new MsSqlProfiler();
                     sqlRunner.Profile(profiler);
                 }
 
@@ -251,9 +252,9 @@ namespace Monocle
             }
         }
 
-        private static T Execute<T>(string cmdText, SqlParameter[] parameters) where T : class, new()
+        private static T Execute<T>(string cmdText, IEnumerable<Parameter> parameters) where T : class, new()
         {
-            return SqlHelper.Transform<T>(ExecuteDataTable(cmdText, true, parameters));
+            return PersistableHelper.Transform<T>(ExecuteDataTable(cmdText, true, parameters));
         }
 
         private static bool IsStoredProcedure(string cmdText)
@@ -261,13 +262,13 @@ namespace Monocle
             return cmdText.Split().Length == 1;
         }
 
-        private static string GetWhereClause(IEnumerable<SqlParameter> sqlParams)
+        private static string GetWhereClause(IEnumerable<Parameter> sqlParams)
         {
             var sb = new StringBuilder(WhereClauseDefaultStringBuilderSize);
 
             foreach (var p in sqlParams)
             {
-                sb.Append("[" + p.ParameterName + "]=@" + p.ParameterName + " and ");
+                sb.Append("[" + p.Name + "]=@" + p.Name + " and ");
             }
 
             var str = sb.ToString();
@@ -276,18 +277,16 @@ namespace Monocle
             return str;
         }
 
-        private static SqlParameter[] GetSqlParameters(object parameters)
+        private static IEnumerable<Parameter> GetParameters(object parameters)
         {
-            var list = new List<SqlParameter>();
+            var list = new List<Parameter>();
 
             if (parameters == null)
                 return list.ToArray();
 
-            foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(parameters))
-            {
-                var value = descriptor.GetValue(parameters);
-                list.Add(new SqlParameter(descriptor.Name, value));
-            }
+            list.AddRange(from PropertyDescriptor descriptor in TypeDescriptor.GetProperties(parameters)
+                          let value = descriptor.GetValue(parameters)
+                          select new Parameter(descriptor.Name, value));
 
             return list.ToArray();
         }
@@ -298,9 +297,9 @@ namespace Monocle
         {
             var cmdText = cmd.CommandText;
 
-            foreach (SqlParameter param in cmd.Parameters)
+            foreach (Parameter param in cmd.Parameters)
             {
-                cmdText = cmdText.Replace("@" + param.ParameterName, param.Value.ToString());
+                cmdText = cmdText.Replace("@" + param.Name, param.Value.ToString());
             }
 
             _logWriter.Write(DateTime.Now, cmdText);

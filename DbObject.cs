@@ -1,13 +1,12 @@
 ﻿using System.Collections.Generic;
-using System.Data.SqlClient;
 
 namespace Monocle
 {
     public abstract class DbObject
     {
-        public IEnumerable<SqlParameter> Transform<T>(T obj) where T : class, new()
+        public IEnumerable<Parameter> Transform<T>(T obj) where T : class, new()
         {
-            return SqlHelper.Transform(obj);
+            return PersistableHelper.Transform(obj);
         }
 
         public virtual void Save() { }

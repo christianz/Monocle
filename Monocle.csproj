@@ -46,7 +46,7 @@
     <Compile Include="IQueryFactory.cs" />
     <Compile Include="MsSqlQueryFactory.cs" />
     <Compile Include="Persistable.cs" />
-    <Compile Include="Database.cs" />
+    <Compile Include="Monocle.cs" />
     <Compile Include="HyperPropertyDescriptor\ChainingPropertyDescriptor.cs" />
     <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptionProvider.cs" />
     <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptor.cs" />

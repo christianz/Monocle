@@ -1,6 +1,6 @@
 ﻿namespace Monocle
 {
-    public static class Database
+    public static class Monocle
     {
         public static void Initialize(string connectionString)
         {

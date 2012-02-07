@@ -42,7 +42,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ColumnAttribute.cs" />
-    <Compile Include="IMonocleCommand.cs" />
     <Compile Include="IQueryFactory.cs" />
     <Compile Include="MsSqlQueryFactory.cs" />
     <Compile Include="Persistable.cs" />

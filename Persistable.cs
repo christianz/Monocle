@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Monocle
 {
-    public abstract class Persistable
+    public abstract class Persistable : DbObject
     {
         private static readonly Dictionary<Type, string> ClassTableDictionary = new Dictionary<Type, string>();
         private static readonly IQueryFactory QueryGenerator = new MsSqlQueryFactory();
@@ -40,9 +40,9 @@ namespace Monocle
             TableName = tableName;
         }
 
-        public virtual void Save()
+        public new virtual void Save()
         {
-            var parameters = PersistableHelper.Transform(_type, this).Where(p => p.Value != null).ToArray();
+            var parameters = GetParameters(_type, this).Where(p => p.Value != null).ToArray();
 
             var query = QueryGenerator.GetSaveQuery(this, parameters);
 
@@ -52,7 +52,7 @@ namespace Monocle
             ExistsInDb = true;
         }
 
-        public virtual void Delete()
+        public new virtual void Delete()
         {
             var query = QueryGenerator.GetDeleteQuery(this);
 
@@ -61,5 +61,6 @@ namespace Monocle
 
             ExistsInDb = false;
         }
+
     }
 }

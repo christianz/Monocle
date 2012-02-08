@@ -79,7 +79,7 @@ namespace Monocle
         {
             var dt = ExecuteDataTable(cmdText, true, GetParameters(parameters));
 
-            return PersistableHelper.TransformList<T>(dt);
+            return Persistable.TransformList<T>(dt);
         }
 
         public static void Execute(string cmdText)
@@ -101,7 +101,7 @@ namespace Monocle
 
         public static T Execute<T>(string cmdText, object parameters) where T : class, new()
         {
-            return PersistableHelper.Transform<T>(ExecuteDataTable(cmdText, true, GetParameters(parameters)));
+            return Persistable.Transform<T>(ExecuteDataTable(cmdText, true, GetParameters(parameters)));
         }
 
         public static T Execute<T>(string cmdText) where T : class, new()
@@ -254,7 +254,7 @@ namespace Monocle
 
         private static T Execute<T>(string cmdText, IEnumerable<Parameter> parameters) where T : class, new()
         {
-            return PersistableHelper.Transform<T>(ExecuteDataTable(cmdText, true, parameters));
+            return Persistable.Transform<T>(ExecuteDataTable(cmdText, true, parameters));
         }
 
         private static bool IsStoredProcedure(string cmdText)

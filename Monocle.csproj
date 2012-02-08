@@ -42,10 +42,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ColumnAttribute.cs" />
+    <Compile Include="DataTableHelper.cs" />
     <Compile Include="IQueryFactory.cs" />
     <Compile Include="MsSqlQueryFactory.cs" />
     <Compile Include="Persistable.cs" />
-    <Compile Include="Monocle.cs" />
     <Compile Include="HyperPropertyDescriptor\ChainingPropertyDescriptor.cs" />
     <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptionProvider.cs" />
     <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptor.cs" />
@@ -58,7 +58,6 @@
     <Compile Include="Profiler\DbProfilingResults.cs" />
     <Compile Include="Profiler\IDbProfiler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PersistableHelper.cs" />
     <Compile Include="MsSqlCommand.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="ViewObject.cs" />

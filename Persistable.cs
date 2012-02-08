@@ -61,6 +61,5 @@ namespace Monocle
 
             ExistsInDb = false;
         }
-
     }
 }

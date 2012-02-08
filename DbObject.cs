@@ -23,7 +23,7 @@ namespace Monocle
         /// <param name="type"></param>
         /// <param name="dbObject"></param>
         /// <returns></returns>
-        protected IEnumerable<Parameter> GetParameters<T>(Type type, T dbObject)
+        internal IEnumerable<Parameter> GetParameters<T>(Type type, T dbObject)
         {
             if (!CachedHyperTypes.Contains(type))
             {
@@ -75,14 +75,9 @@ namespace Monocle
             }
         }
 
-        public IEnumerable<Parameter> GetParameters()
+        public IEnumerable<Parameter> GetParameters<T>() where T : DbObject
         {
-            return GetParameters<Persistable>();
-        }
-
-        public IEnumerable<Parameter> GetParameters<T>()
-        {
-            return GetParameters(typeof(T), this);
+            return GetParameters(typeof(T), (T)this);
         }
 
         /// <summary>
@@ -151,7 +146,7 @@ namespace Monocle
         /// <typeparam name="T">The type we want to transform the DataRow properties to.</typeparam>
         /// <param name="dataTable">A DataTable containing 1 row (if it contains more, an exception is thrown) to transform into an instance of type T</param>
         /// <returns>An instance of type T with the properties filled from the DataTable</returns>
-        public static T Transform<T>(DataTable dataTable) where T : class, new()
+        public static T FromParameters<T>(DataTable dataTable) where T : class, new()
         {
             if (dataTable.Rows.Count == 0)
                 return default(T);
@@ -171,7 +166,7 @@ namespace Monocle
         /// <typeparam name="T">The type we want to transform the DataRow[] to</typeparam>
         /// <param name="dataTable">A DataTable containing a collection of DataRows that are transformed</param>
         /// <returns>An IEnumerable containing a collection of instances of type T</returns>
-        public static IEnumerable<T> TransformList<T>(DataTable dataTable) where T : new()
+        public static IEnumerable<T> ListFromParameters<T>(DataTable dataTable) where T : new()
         {
             return from dict in DataTableHelper.GetAllRowsAsDictionary(dataTable) select Transform<T>(dict);
         }

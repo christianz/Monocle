@@ -60,7 +60,7 @@ namespace Monocle
 
         public static DataTable ExecuteDataTable(string cmdText, object parameters)
         {
-            var sqlParams = GetParameters(parameters);
+            var sqlParams = GetDbParameters(parameters);
 
             return ExecuteDataTable(cmdText, true, sqlParams);
         }
@@ -77,9 +77,9 @@ namespace Monocle
 
         public static IEnumerable<T> ExecuteList<T>(string cmdText, object parameters) where T : class, new()
         {
-            var dt = ExecuteDataTable(cmdText, true, GetParameters(parameters));
+            var dt = ExecuteDataTable(cmdText, true, GetDbParameters(parameters));
 
-            return Persistable.TransformList<T>(dt);
+            return DbObject.ListFromParameters<T>(dt);
         }
 
         public static void Execute(string cmdText)
@@ -96,12 +96,18 @@ namespace Monocle
 
         public static void Execute(string cmdText, object parameters)
         {
-            ExecuteDataTable(cmdText, false, GetParameters(parameters));
+            if (!(parameters is IEnumerable<Parameter>))
+                parameters = GetDbParameters(parameters);
+                
+            ExecuteDataTable(cmdText, false, (IEnumerable<Parameter>)parameters);
         }
 
         public static T Execute<T>(string cmdText, object parameters) where T : class, new()
         {
-            return Persistable.Transform<T>(ExecuteDataTable(cmdText, true, GetParameters(parameters)));
+            if (!(parameters is IEnumerable<Parameter>))
+                parameters = GetDbParameters(parameters);
+                
+            return DbObject.FromParameters<T>(ExecuteDataTable(cmdText, true, (IEnumerable<Parameter>)parameters));
         }
 
         public static T Execute<T>(string cmdText) where T : class, new()
@@ -111,7 +117,7 @@ namespace Monocle
 
         public static T ExecuteScalar<T>(string cmdText, object parameters)
         {
-            var dt = ExecuteDataTable(cmdText, true, GetParameters(parameters));
+            var dt = ExecuteDataTable(cmdText, true, GetDbParameters(parameters));
 
             if (dt.Rows.Count < 1)
                 return default(T);
@@ -211,7 +217,7 @@ namespace Monocle
 
         public static T FindBy<T>(object parameters) where T : Persistable, new()
         {
-            var sqlParams = GetParameters(parameters);
+            var sqlParams = GetDbParameters(parameters);
 
             var prop = typeof(T).GetCustomAttributes(typeof(TableAttribute), false);
 
@@ -254,7 +260,7 @@ namespace Monocle
 
         private static T Execute<T>(string cmdText, IEnumerable<Parameter> parameters) where T : class, new()
         {
-            return Persistable.Transform<T>(ExecuteDataTable(cmdText, true, parameters));
+            return DbObject.FromParameters<T>(ExecuteDataTable(cmdText, true, parameters));
         }
 
         private static bool IsStoredProcedure(string cmdText)
@@ -277,7 +283,7 @@ namespace Monocle
             return str;
         }
 
-        private static IEnumerable<Parameter> GetParameters(object parameters)
+        private static IEnumerable<Parameter> GetDbParameters(object parameters)
         {
             var list = new List<Parameter>();
 
@@ -320,9 +326,9 @@ namespace Monocle
                 Cache.Remove(cacheId);
         }
 
-        public static MemoryCache GetCache()
+        public static Dictionary<string, object> GetCache()
         {
-            return Cache;
+            return Cache.ToDictionary(o => o.Key, o => o.Value);
         }
 
         public static void ClearCache()

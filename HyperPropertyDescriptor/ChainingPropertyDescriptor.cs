@@ -3,7 +3,7 @@ using System.ComponentModel;
 
 namespace Monocle.HyperPropertyDescriptor
 {
-    public abstract class ChainingPropertyDescriptor : PropertyDescriptor
+    internal abstract class ChainingPropertyDescriptor : PropertyDescriptor
     {
         private readonly PropertyDescriptor _root;
 

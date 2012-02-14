@@ -42,7 +42,7 @@ To save an instance of your object to the database, call the Save()-method on th
 
 ### ViewObject
 
-Inherit from ViewObject when you want to map a table to a view. In this case you do not need to override the Id property, but you must include the [Table] and [Column] attributes as normal. You can override the Save() and Delete() methods as necessary to implement persistance logic.
+Inherit from ViewObject when you want to map a table to a view. In this case you do not need to override the Id property, but you must include [Column] attributes as normal. You can override the Save() and Delete() methods as necessary to implement persistance logic.
 
     [Table]
     public class MyViewObject : ViewObject

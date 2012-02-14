@@ -9,9 +9,9 @@ namespace Monocle
 {
     public abstract class DbObject
     {
-        private static readonly Dictionary<Type, PropertyDescriptorCollection> ReadColumns = new Dictionary<Type, PropertyDescriptorCollection>();
-        private static readonly Dictionary<Type, PropertyDescriptorCollection> WriteColumns = new Dictionary<Type, PropertyDescriptorCollection>();
-        private static readonly HashSet<Type> CachedHyperTypes = new HashSet<Type>();
+        private static readonly Dictionary<string, PropertyDescriptorCollection> ReadColumns = new Dictionary<string, PropertyDescriptorCollection>(128);
+        private static readonly Dictionary<string, PropertyDescriptorCollection> WriteColumns = new Dictionary<string, PropertyDescriptorCollection>(128);
+        private static readonly HashSet<string> CachedHyperTypes = new HashSet<string>();
 
         public virtual void Save() { }
         public virtual void Delete() { }
@@ -25,22 +25,22 @@ namespace Monocle
         /// <returns></returns>
         internal IEnumerable<Parameter> GetParameters<T>(Type type, T dbObject)
         {
-            if (!CachedHyperTypes.Contains(type))
+            var typeName = type.FullName;
+
+            if (!CachedHyperTypes.Contains(typeName))
             {
-                CachedHyperTypes.Add(type);
+                CachedHyperTypes.Add(typeName);
                 HyperTypeDescriptionProvider.Add(type);
             }
 
             PropertyDescriptorCollection srcPropertyInfo;
 
-            WriteColumns.TryGetValue(type, out srcPropertyInfo);
-
-            if (srcPropertyInfo == null)
+            if (!WriteColumns.TryGetValue(typeName, out srcPropertyInfo))
             {
                 srcPropertyInfo = BuildPropertyInfo(dbObject);
-                var propList = new List<ChainingPropertyDescriptor>(srcPropertyInfo.Count);
+                var propList = new List<PropertyDescriptor>(srcPropertyInfo.Count);
 
-                foreach (ChainingPropertyDescriptor p in srcPropertyInfo)
+                foreach (PropertyDescriptor p in srcPropertyInfo.AsParallel())
                 {
                     var objColAttr = p.Attributes[typeof(ColumnAttribute)];
                     var colAttr = objColAttr as ColumnAttribute;
@@ -51,10 +51,10 @@ namespace Monocle
                     propList.Add(p);
                 }
 
-                WriteColumns[type] = srcPropertyInfo = new PropertyDescriptorCollection(propList.ToArray());
+                WriteColumns[typeName] = srcPropertyInfo = new PropertyDescriptorCollection(propList.ToArray());
             }
 
-            foreach (ChainingPropertyDescriptor prop in srcPropertyInfo)
+            foreach (PropertyDescriptor prop in srcPropertyInfo.AsParallel())
             {
                 var key = prop.Name;
                 var value = prop.GetValue(dbObject);
@@ -96,10 +96,11 @@ namespace Monocle
         private static T Transform<T>(IDictionary<string, object> objData) where T : new()
         {
             var type = typeof(T);
+            var typeName = type.FullName;
 
-            if (!CachedHyperTypes.Contains(type))
+            if (!CachedHyperTypes.Contains(typeName))
             {
-                CachedHyperTypes.Add(type);
+                CachedHyperTypes.Add(typeName);
                 HyperTypeDescriptionProvider.Add(type);
             }
 
@@ -107,13 +108,13 @@ namespace Monocle
 
             PropertyDescriptorCollection propertyInfo;
 
-            if (!ReadColumns.TryGetValue(type, out propertyInfo))
+            if (!ReadColumns.TryGetValue(typeName, out propertyInfo))
             {
                 propertyInfo = BuildPropertyInfo(objInstance);
-                ReadColumns[type] = propertyInfo;
+                ReadColumns[typeName] = propertyInfo;
             }
 
-            foreach (ChainingPropertyDescriptor prop in propertyInfo.AsParallel())
+            foreach (PropertyDescriptor prop in propertyInfo.AsParallel())
             {
                 var objColAttr = prop.Attributes[typeof(ColumnAttribute)];
                 var colAttr = objColAttr as ColumnAttribute;

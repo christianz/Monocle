@@ -7,6 +7,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Text;
+using Monocle.HyperPropertyDescriptor;
 using Monocle.Profiler;
 
 namespace Monocle

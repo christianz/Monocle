@@ -7,6 +7,10 @@ Uses the HyperTypeDescriptor component written by Marc Gravell and described her
 
 ## Usage
 
+Call the Initialize method to let Monocle know about your database:
+
+    MonocleDb.Initialize(string connectionString);
+
 Mapping a table to a class can be achieved in one of two different ways:
 
 ### Persistable
@@ -51,4 +55,25 @@ Inherit from ViewObject when you want to map a table to a view. In this case you
             // Save logic here.
         }
     }
+
+### MonocleDb
+
+Call methods in the static MonocleDb class when you want to perform an action on the current database.
+
+    MonocleDb.Execute("MyJob");
+
+will execute the procedure MyJob.
+
+Monocle can transform a database result to an object using the following method:
+
+    var myPerson = MonocleDb.Execute<Person>("select top 1 * from Person");
+
+If you want to send in parameters, you can use an anonymous object initializer: 
+
+    var myPerson = MonocleDb.Execute<Person>("select top 1 * from Person where id = @Id", new { Id = personId });
+
+But if you want to select someone by their Id, you might just as well use:
+
+    var myPerson = MonocleDb.FindById<Person>(personId);
+
 

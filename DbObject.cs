@@ -38,9 +38,9 @@ namespace Monocle
             if (srcPropertyInfo == null)
             {
                 srcPropertyInfo = BuildPropertyInfo(dbObject);
-                var propList = new List<PropertyDescriptor>(srcPropertyInfo.Count);
+                var propList = new List<ChainingPropertyDescriptor>(srcPropertyInfo.Count);
 
-                foreach (PropertyDescriptor p in srcPropertyInfo)
+                foreach (ChainingPropertyDescriptor p in srcPropertyInfo)
                 {
                     var objColAttr = p.Attributes[typeof(ColumnAttribute)];
                     var colAttr = objColAttr as ColumnAttribute;
@@ -54,7 +54,7 @@ namespace Monocle
                 WriteColumns[type] = srcPropertyInfo = new PropertyDescriptorCollection(propList.ToArray());
             }
 
-            foreach (PropertyDescriptor prop in srcPropertyInfo)
+            foreach (ChainingPropertyDescriptor prop in srcPropertyInfo)
             {
                 var key = prop.Name;
                 var value = prop.GetValue(dbObject);
@@ -91,9 +91,9 @@ namespace Monocle
         /// the corresponding properties in a new instance of type T.
         /// </summary>
         /// <typeparam name="T">The type to transform the DataRow into</typeparam>
-        /// <param name="dataRow">The DataRow containing the source values</param>
+        /// <param name="objData">The DataRow containing the source values</param>
         /// <returns>A new instance of T with the values from the DataRow.</returns>
-        private static T Transform<T>(IDictionary<string, object> dataRow) where T : new()
+        private static T Transform<T>(IDictionary<string, object> objData) where T : new()
         {
             var type = typeof(T);
 
@@ -103,19 +103,17 @@ namespace Monocle
                 HyperTypeDescriptionProvider.Add(type);
             }
 
-            var objInstance = new T();
+            var objInstance = ParameterlessConstructor<T>.Create();
 
             PropertyDescriptorCollection propertyInfo;
 
-            ReadColumns.TryGetValue(type, out propertyInfo);
-
-            if (propertyInfo == null)
+            if (!ReadColumns.TryGetValue(type, out propertyInfo))
             {
                 propertyInfo = BuildPropertyInfo(objInstance);
                 ReadColumns[type] = propertyInfo;
             }
 
-            foreach (PropertyDescriptor prop in propertyInfo)
+            foreach (ChainingPropertyDescriptor prop in propertyInfo.AsParallel())
             {
                 var objColAttr = prop.Attributes[typeof(ColumnAttribute)];
                 var colAttr = objColAttr as ColumnAttribute;
@@ -124,9 +122,9 @@ namespace Monocle
                     continue;
 
                 var key = prop.Name.ToLower();
-                var drVal = dataRow[key];
+                object drVal;
 
-                if (drVal == null)
+                if (!objData.TryGetValue(key, out drVal))
                     continue;
 
                 var resVal = MonocleDb.ChangeType(drVal, prop.PropertyType);
@@ -165,7 +163,7 @@ namespace Monocle
         /// <returns>An IEnumerable containing a collection of instances of type T</returns>
         public static IEnumerable<T> ListFromParameters<T>(DataTable dataTable) where T : new()
         {
-            return from dict in DataTableHelper.GetAllRowsAsDictionary(dataTable) select Transform<T>(dict);
+            return from dict in DataTableHelper.GetAllRowsAsDictionary(dataTable).AsParallel() select Transform<T>(dict);
         }
 
     }

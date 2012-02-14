@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace Monocle.HyperPropertyDescriptor
 {
-    internal sealed class HyperTypeDescriptor : CustomTypeDescriptor
+    public sealed class HyperTypeDescriptor : CustomTypeDescriptor
     {
         private readonly PropertyDescriptorCollection propertyCollections;
         static readonly Dictionary<PropertyInfo, PropertyDescriptor> properties = new Dictionary<PropertyInfo, PropertyDescriptor>();

@@ -30,13 +30,11 @@ namespace Monocle
             return columnNames;
         }
 
-        public static List<Dictionary<string, object>> GetAllRowsAsDictionary(DataTable table)
+        public static IEnumerable<Dictionary<string, object>> GetAllRowsAsDictionary(DataTable table)
         {
-            var list = new List<Dictionary<string, object>>();
-
             var columnNames = GetColumnNames(table.Columns);
 
-            foreach (DataRow dr in table.Rows)
+            foreach (DataRow dr in table.Rows.AsParallel())
             {
                 var dict = new Dictionary<string, object>(columnNames.Count);
 
@@ -45,10 +43,8 @@ namespace Monocle
                     dict.Add(columnNames[i], dr.ItemArray[i]);
                 }
 
-                list.Add(dict);
+                yield return dict;
             }
-
-            return list;
         }
     }
 }

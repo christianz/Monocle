@@ -6,43 +6,37 @@ using System.Security.Permissions;
 
 namespace Monocle.HyperPropertyDescriptor
 {
-    internal sealed class HyperTypeDescriptionProvider : TypeDescriptionProvider
+    public sealed class HyperTypeDescriptionProvider : TypeDescriptionProvider
     {
         public static void Add(Type type)
         {
             TypeDescriptionProvider parent = TypeDescriptor.GetProvider(type);
             TypeDescriptor.AddProvider(new HyperTypeDescriptionProvider(parent), type);
         }
-
         public HyperTypeDescriptionProvider() : this(typeof(object)) { }
         public HyperTypeDescriptionProvider(Type type) : this(TypeDescriptor.GetProvider(type)) { }
         public HyperTypeDescriptionProvider(TypeDescriptionProvider parent) : base(parent) { }
-
         public static void Clear(Type type)
         {
-            lock (Descriptors)
+            lock (descriptors)
             {
-                Descriptors.Remove(type);
+                descriptors.Remove(type);
             }
         }
-
         public static void Clear()
         {
-            lock (Descriptors)
+            lock (descriptors)
             {
-                Descriptors.Clear();
+                descriptors.Clear();
             }
         }
-
-        private static readonly Dictionary<Type, ICustomTypeDescriptor> Descriptors = new Dictionary<Type, ICustomTypeDescriptor>();
-
-        public override ICustomTypeDescriptor GetTypeDescriptor(Type objectType, object instance)
+        private static readonly Dictionary<Type, ICustomTypeDescriptor> descriptors = new Dictionary<Type, ICustomTypeDescriptor>();
+        public sealed override ICustomTypeDescriptor GetTypeDescriptor(Type objectType, object instance)
         {
-            lock (Descriptors)
+            ICustomTypeDescriptor descriptor;
+            lock (descriptors)
             {
-                ICustomTypeDescriptor descriptor;
-
-                if (!Descriptors.TryGetValue(objectType, out descriptor))
+                if (!descriptors.TryGetValue(objectType, out descriptor))
                 {
                     try
                     {
@@ -53,11 +47,10 @@ namespace Monocle.HyperPropertyDescriptor
                         return base.GetTypeDescriptor(objectType, instance);
                     }
                 }
-
                 return descriptor;
             }
         }
-
+        
         [SecuritySafeCritical]
         [ReflectionPermission(SecurityAction.Assert, Unrestricted = true)]
         private ICustomTypeDescriptor BuildDescriptor(Type objectType)
@@ -67,22 +60,21 @@ namespace Monocle.HyperPropertyDescriptor
             // get the parent descriptor and add to the dictionary so that
             // building the new descriptor will use the base rather than recursing
             ICustomTypeDescriptor descriptor = base.GetTypeDescriptor(objectType, null);
-            Descriptors.Add(objectType, descriptor);
+            descriptors.Add(objectType, descriptor);
             try
             {
                 // build a new descriptor from this, and replace the lookup
                 descriptor = new HyperTypeDescriptor(descriptor);
-                Descriptors[objectType] = descriptor;
+                descriptors[objectType] = descriptor;
                 return descriptor;
             }
             catch
             {   // rollback and throw
                 // (perhaps because the specific caller lacked permissions;
                 // another caller may be successful)
-                Descriptors.Remove(objectType);
+                descriptors.Remove(objectType);
                 throw;
             }
         }
     }
-
 }

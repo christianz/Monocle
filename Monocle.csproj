@@ -45,6 +45,7 @@
     <Compile Include="DataTableHelper.cs" />
     <Compile Include="IQueryFactory.cs" />
     <Compile Include="MsSqlQueryFactory.cs" />
+    <Compile Include="ParameterlessConstructor.cs" />
     <Compile Include="Persistable.cs" />
     <Compile Include="HyperPropertyDescriptor\ChainingPropertyDescriptor.cs" />
     <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptionProvider.cs" />
@@ -61,9 +62,6 @@
     <Compile Include="MsSqlCommand.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="ViewObject.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="README" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

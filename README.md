@@ -17,7 +17,7 @@ Mapping a table to a class can be achieved in one of two different ways:
 
 Inherit from Persistable when you want to be able to Insert, Update or Delete an instance of your class (a row in your table) out-of-the-box. You also need to have a column called Id of type uniqueidentifier in the corresponding table.
 
-Inherit from Persistable and put a [Table] attribute above your class declaration. You will also need to implement the Id property.
+Inherit from Persistable and, optionally, put a [Table("MyTableName")] attribute above your class declaration. If Monocle doesn't find a [Table] attribute above your class, it will use a table with the same name as your class in the database. You will also need to implement the Id property.
 
     [Table]
     public class MyMappedClass : Persistable

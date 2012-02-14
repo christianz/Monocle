@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace Monocle
 {
     public abstract class Persistable : DbObject
     {
-        private static readonly Dictionary<Type, string> ClassTableDictionary = new Dictionary<Type, string>();
         private static readonly IQueryFactory QueryGenerator = new MsSqlQueryFactory();
 
         public abstract Guid Id { get; set; }
@@ -23,21 +21,9 @@ namespace Monocle
 
         protected Persistable()
         {
-            string tableName;
             _type = GetType();
 
-            if (!ClassTableDictionary.TryGetValue(_type, out tableName))
-            {
-                var prop = _type.GetCustomAttributes(typeof (TableAttribute), false);
-
-                if (prop.Length != 1)
-                    throw new ArgumentException("Type has no TableAttribute.");
-
-                tableName = ((TableAttribute) prop[0]).TableName;
-                ClassTableDictionary[_type] = tableName;
-            }
-
-            TableName = tableName;
+            TableName = TableAttribute.GetTableName(_type);
         }
 
         public new virtual void Save()

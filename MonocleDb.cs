@@ -13,7 +13,7 @@ namespace Monocle
 {
     public static class MonocleDb
     {
-        private const int WhereClauseDefaultStringBuilderSize = 128;
+        private const int WhereClauseDefaultStringBuilderSize = 64;
 
         private static bool _useCaching;
         private static bool _useProfiling;
@@ -187,14 +187,9 @@ namespace Monocle
 
         public static T FindById<T>(Guid id) where T : Persistable, new()
         {
-            var prop = typeof(T).GetCustomAttributes(typeof(TableAttribute), false);
-
-            if (prop.Length != 1)
-                throw new ArgumentException("Type does not contain a [Table] attribute on the top of the class.");
-
-            var tableName = ((TableAttribute)prop[0]).TableName;
-
-            var cacheId = tableName + "_" + id;
+            var tableName = TableAttribute.GetTableName(typeof(T));
+            
+            var cacheId = string.Concat(tableName, "_", id);
 
             if (_useCaching && Cache.Contains(cacheId))
             {
@@ -217,16 +212,11 @@ namespace Monocle
 
         public static T FindBy<T>(object parameters) where T : Persistable, new()
         {
+            var tableName = TableAttribute.GetTableName(typeof(T));
+
             var sqlParams = GetDbParameters(parameters);
 
-            var prop = typeof(T).GetCustomAttributes(typeof(TableAttribute), false);
-
-            if (prop.Length != 1)
-                throw new ArgumentException("Type does not contain a [Table] attribute on the top of the class.");
-
-            var tableName = ((TableAttribute)prop[0]).TableName;
-
-            var result = Execute<T>("select * from [dbo].[" + tableName + "] where " + GetWhereClause(sqlParams), parameters);
+            var result = Execute<T>(string.Concat("select * from [dbo].[", tableName, "] where ", GetWhereClause(sqlParams), parameters));
 
             result.ExistsInDb = true;
 
@@ -272,9 +262,9 @@ namespace Monocle
         {
             var sb = new StringBuilder(WhereClauseDefaultStringBuilderSize);
 
-            foreach (var p in sqlParams)
+            foreach (var name in sqlParams.Select(p => p.Name))
             {
-                sb.Append("[" + p.Name + "]=@" + p.Name + " and ");
+                sb.Append(string.Concat("[", name, "]=@", name, " and "));
             }
 
             var str = sb.ToString();

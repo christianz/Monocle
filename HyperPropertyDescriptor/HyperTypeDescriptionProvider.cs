@@ -6,7 +6,7 @@ using System.Security.Permissions;
 
 namespace Monocle.HyperPropertyDescriptor
 {
-    public sealed class HyperTypeDescriptionProvider : TypeDescriptionProvider
+    internal sealed class HyperTypeDescriptionProvider : TypeDescriptionProvider
     {
         public static void Add(Type type)
         {

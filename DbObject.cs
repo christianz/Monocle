@@ -51,10 +51,7 @@ namespace Monocle
                     propList.Add(p);
                 }
 
-                var propertyInfo = new PropertyDescriptorCollection(propList.ToArray());
-
-                WriteColumns[type] = propertyInfo;
-                srcPropertyInfo = propertyInfo;
+                WriteColumns[type] = srcPropertyInfo = new PropertyDescriptorCollection(propList.ToArray());
             }
 
             foreach (PropertyDescriptor prop in srcPropertyInfo)

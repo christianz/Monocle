@@ -7,7 +7,6 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Text;
-using Monocle.HyperPropertyDescriptor;
 using Monocle.Profiler;
 
 namespace Monocle
@@ -59,26 +58,26 @@ namespace Monocle
             _logWriter = logWriter;
         }
 
-        public static DataTable ExecuteDataTable(string cmdText, object parameters)
+        public static IDataReader ExecuteReader(string cmdText, object parameters)
         {
             var sqlParams = GetDbParameters(parameters);
 
-            return ExecuteDataTable(cmdText, true, sqlParams);
+            return ExecuteReader(cmdText, true, sqlParams);
         }
 
-        public static DataTable ExecuteDataTable(string cmdText)
+        public static IDataReader ExecuteReader(string cmdText)
         {
-            return ExecuteDataTable(cmdText, new {});
+            return ExecuteReader(cmdText, new {});
         }
 
-        public static IEnumerable<T> ExecuteList<T>(string cmdText) where T : class, new()
+        public static IEnumerable<T> ExecuteList<T>(string cmdText) where T : new()
         {
             return ExecuteList<T>(cmdText, null);
         }
 
-        public static IEnumerable<T> ExecuteList<T>(string cmdText, object parameters) where T : class, new()
+        public static IEnumerable<T> ExecuteList<T>(string cmdText, object parameters) where T : new()
         {
-            var dt = ExecuteDataTable(cmdText, true, GetDbParameters(parameters));
+            var dt = ExecuteReader(cmdText, true, GetDbParameters(parameters));
 
             return DbObject.ListFromParameters<T>(dt);
         }
@@ -92,7 +91,7 @@ namespace Monocle
         public static void Execute(string cmdText, params Parameter[] parameters)
 // ReSharper restore MethodOverloadWithOptionalParameter
         {
-            ExecuteDataTable(cmdText, false, parameters);
+            ExecuteReader(cmdText, false, parameters);
         }
 
         public static void Execute(string cmdText, object parameters)
@@ -100,7 +99,7 @@ namespace Monocle
             if (!(parameters is IEnumerable<Parameter>))
                 parameters = GetDbParameters(parameters);
                 
-            ExecuteDataTable(cmdText, false, (IEnumerable<Parameter>)parameters);
+            ExecuteReader(cmdText, false, (IEnumerable<Parameter>)parameters);
         }
 
         public static T Execute<T>(string cmdText, object parameters) where T : class, new()
@@ -108,7 +107,7 @@ namespace Monocle
             if (!(parameters is IEnumerable<Parameter>))
                 parameters = GetDbParameters(parameters);
                 
-            return DbObject.FromParameters<T>(ExecuteDataTable(cmdText, true, (IEnumerable<Parameter>)parameters));
+            return DbObject.FromParameters<T>(ExecuteReader(cmdText, true, (IEnumerable<Parameter>)parameters));
         }
 
         public static T Execute<T>(string cmdText) where T : class, new()
@@ -118,12 +117,12 @@ namespace Monocle
 
         public static T ExecuteScalar<T>(string cmdText, object parameters)
         {
-            var dt = ExecuteDataTable(cmdText, true, GetDbParameters(parameters));
+            var dt = ExecuteReader(cmdText, true, GetDbParameters(parameters));
 
-            if (dt.Rows.Count < 1)
+            if (!dt.Read())
                 return default(T);
 
-            var scalarValue = dt.Rows[0][0];
+            var scalarValue = dt.GetValue(0);
             return (T)ChangeType(scalarValue, typeof (T));
         }
 
@@ -200,7 +199,7 @@ namespace Monocle
                     return (T)Cache[cacheId];
             }
 
-            var result = Execute<T>("select top 1 * from [" + tableName + "] where [id] = @id", new[] { new Parameter("id", id) });
+            var result = Execute<T>(string.Concat("select top 1 * from [", tableName, "] where [id] = @id"), new[] { new Parameter("id", id) });
 
             if (_useCaching && result != null)
                 Cache[cacheId] = result;
@@ -224,34 +223,34 @@ namespace Monocle
             return result;
         }
 
-        private static DataTable ExecuteDataTable(string cmdText, bool expectsResults, IEnumerable<Parameter> parameters)
+        private static IDataReader ExecuteReader(string cmdText, bool expectsResults, IEnumerable<Parameter> parameters)
         {
             var isStoredProcedure = IsStoredProcedure(cmdText);
 
-            var cmd = new SqlCommand(cmdText) { CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text };
+            var cmd = new SqlCommand(cmdText)
+                          {CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text};
 
             foreach (var p in parameters ?? new List<Parameter>(0))
                 cmd.Parameters.AddWithValue(p.Name, p.Value);
 
-            using (var sqlRunner = new MsSqlCommand(_connectionString, cmd))
+            var sqlRunner = new MsSqlCommand(_connectionString, cmd);
+
+            if (_useProfiling)
             {
-                if (_useProfiling)
-                {
-                    var profiler = new MsSqlProfiler();
-                    sqlRunner.Profile(profiler);
-                }
-
-                if (expectsResults)
-                    return sqlRunner.ExecuteDataTable();
-
-                sqlRunner.ExecuteNonCommand();
-                return null;
+                var profiler = new MsSqlProfiler();
+                sqlRunner.Profile(profiler);
             }
+
+            if (expectsResults)
+                return sqlRunner.ExecuteDataTable();
+
+            sqlRunner.ExecuteNonCommand();
+            return null;
         }
 
         private static T Execute<T>(string cmdText, IEnumerable<Parameter> parameters) where T : class, new()
         {
-            return DbObject.FromParameters<T>(ExecuteDataTable(cmdText, true, parameters));
+            return DbObject.FromParameters<T>(ExecuteReader(cmdText, true, parameters));
         }
 
         private static bool IsStoredProcedure(string cmdText)
@@ -281,7 +280,7 @@ namespace Monocle
             if (parameters == null)
                 return list.ToArray();
 
-            list.AddRange(from PropertyDescriptor descriptor in TypeDescriptor.GetProperties(parameters)
+            list.AddRange(from PropertyDescriptor descriptor in TypeDescriptor.GetProperties(parameters).AsParallel()
                           let value = descriptor.GetValue(parameters)
                           select new Parameter(descriptor.Name, value));
 

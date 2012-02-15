@@ -29,10 +29,8 @@ namespace Monocle
             return new SqlConnection(connString);
         }
 
-        public DataTable ExecuteDataTable()
+        public IDataReader ExecuteDataTable()
         {
-            var dt = new DataTable("table");
-
             _sqlConn.Open();
 
             if (_profiler != null)
@@ -40,36 +38,8 @@ namespace Monocle
                 _profiler.StartProfiling(_command);
             }
 
-            using (var reader = _command.ExecuteReader())
-            {
-                if (_profiler != null)
-                {
-                    _profiler.EndProfiling();
-                    DbProfiling.AddResult(_profiler.Results);
-                }
-
-                var colNum = reader.FieldCount;
-
-                for (var i = 0; i < colNum; i++)
-                {
-                    var fldType = reader.GetFieldType(i) ?? typeof(string);
-
-                    dt.Columns.Add(reader.GetName(i), fldType);
-                }
-
-                while (reader.Read())
-                {
-                    var obj = new object[colNum];
-
-                    reader.GetValues(obj);
-
-                    dt.Rows.Add(obj);
-                }
-            }
-
-            _sqlConn.Close();
-
-            return dt;
+            var o = _command.ExecuteReader(CommandBehavior.CloseConnection);
+            return o;
         }
 
         public void ExecuteNonCommand()

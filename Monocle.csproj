@@ -42,7 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ColumnAttribute.cs" />
-    <Compile Include="DataTableHelper.cs" />
+    <Compile Include="PersistableHelper.cs" />
     <Compile Include="IQueryFactory.cs" />
     <Compile Include="MsSqlQueryFactory.cs" />
     <Compile Include="ParameterlessConstructor.cs" />
@@ -62,6 +62,9 @@
     <Compile Include="MsSqlCommand.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="ViewObject.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

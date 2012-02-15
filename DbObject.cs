@@ -12,6 +12,7 @@ namespace Monocle
         private static readonly Dictionary<string, PropertyDescriptorCollection> ReadColumns = new Dictionary<string, PropertyDescriptorCollection>(128);
         private static readonly Dictionary<string, PropertyDescriptorCollection> WriteColumns = new Dictionary<string, PropertyDescriptorCollection>(128);
         private static readonly HashSet<string> CachedHyperTypes = new HashSet<string>();
+        private static readonly Dictionary<string, int> CachedColumnOrdinals = new Dictionary<string, int>();
 
         public virtual void Save() { }
         public virtual void Delete() { }
@@ -93,9 +94,15 @@ namespace Monocle
         /// <typeparam name="T">The type to transform the DataRow into</typeparam>
         /// <param name="objData">The DataRow containing the source values</param>
         /// <returns>A new instance of T with the values from the DataRow.</returns>
-        private static T Transform<T>(IDictionary<string, object> objData) where T : new()
+        private static T Transform<T>(IDataRecord objData) where T : new()
         {
             var type = typeof(T);
+
+            if (type.IsValueType)
+            {
+                return (T)objData.GetValue(0);
+            }
+
             var typeName = type.FullName;
 
             if (!CachedHyperTypes.Contains(typeName))
@@ -116,16 +123,22 @@ namespace Monocle
 
             foreach (PropertyDescriptor prop in propertyInfo.AsParallel())
             {
-                var objColAttr = prop.Attributes[typeof(ColumnAttribute)];
+                var objColAttr = prop.Attributes[typeof (ColumnAttribute)];
                 var colAttr = objColAttr as ColumnAttribute;
 
                 if (colAttr == null)
                     continue;
 
                 var key = prop.Name.ToLower();
-                object drVal;
+                var typeKey = typeName + key;
+                int ord;
 
-                if (!objData.TryGetValue(key, out drVal))
+                if (!CachedColumnOrdinals.TryGetValue(typeKey, out ord))
+                    CachedColumnOrdinals[typeKey] = ord = objData.GetOrdinal(key);
+
+                var drVal = objData.GetValue(ord);
+
+                if (drVal == null)
                     continue;
 
                 var resVal = MonocleDb.ChangeType(drVal, prop.PropertyType);
@@ -137,34 +150,39 @@ namespace Monocle
         }
 
         /// <summary>
-        /// Wrapper method around Transform(DataRow) that takes the first row of the passed-in DataTable and returns the result of Transform(DataRow).
+        /// Wrapper method around Transform(DataRow) that takes the first row of the passed-in DataReader and returns the result of Transform(DataRow).
         /// </summary>
         /// <typeparam name="T">The type we want to transform the DataRow properties to.</typeparam>
-        /// <param name="dataTable">A DataTable containing 1 row (if it contains more, an exception is thrown) to transform into an instance of type T</param>
-        /// <returns>An instance of type T with the properties filled from the DataTable</returns>
-        public static T FromParameters<T>(DataTable dataTable) where T : class, new()
+        /// <param name="reader">A DataReader containing 1 record (if it contains more, an exception is thrown) to transform into an instance of type T</param>
+        /// <returns>An instance of type T with the properties filled from the DataReader</returns>
+        public static T FromParameters<T>(IDataReader reader) where T : class, new()
         {
-            if (dataTable.Rows.Count == 0)
+            if (!reader.Read())
                 return default(T);
 
-            if (dataTable.Rows.Count > 1)
-                throw new ArgumentException("Query returned more than one row. Use the TransformList<T> method for transforming more than one object.");
-
-            var firstRowAsDict = DataTableHelper.GetFirstRowAsDictionary(dataTable);
-
-            return Transform<T>(firstRowAsDict);
+            try
+            {
+                return Transform<T>(reader);
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         /// <summary>
-        /// Makes it possible to transform a DataTable into a list of instances of type T. Every DataRow in the DataTable will contain a set of DataColumns
+        /// Makes it possible to transform a DataReader into a list of instances of type T. Every record in the DataReader will contain a set of fields
         /// where the values correspond to the properties that are defined on the type T.
         /// </summary>
-        /// <typeparam name="T">The type we want to transform the DataRow[] to</typeparam>
-        /// <param name="dataTable">A DataTable containing a collection of DataRows that are transformed</param>
+        /// <typeparam name="T">The type we want to transform the records to</typeparam>
+        /// <param name="reader">A DataReader containing a collection of records that are transformed</param>
         /// <returns>An IEnumerable containing a collection of instances of type T</returns>
-        public static IEnumerable<T> ListFromParameters<T>(DataTable dataTable) where T : new()
+        public static IEnumerable<T> ListFromParameters<T>(IDataReader reader) where T : new()
         {
-            return from dict in DataTableHelper.GetAllRowsAsDictionary(dataTable).AsParallel() select Transform<T>(dict);
+            while (reader.Read())
+            {
+                yield return Transform<T>(reader);
+            }
         }
 
     }

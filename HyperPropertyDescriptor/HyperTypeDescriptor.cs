@@ -9,31 +9,35 @@ namespace Monocle.HyperPropertyDescriptor
 {
     public sealed class HyperTypeDescriptor : CustomTypeDescriptor
     {
-        private readonly PropertyDescriptorCollection propertyCollections;
-        static readonly Dictionary<PropertyInfo, PropertyDescriptor> properties = new Dictionary<PropertyInfo, PropertyDescriptor>();
+        private readonly PropertyDescriptorCollection _propertyCollections;
+        private static readonly Dictionary<PropertyInfo, PropertyDescriptor> Properties = new Dictionary<PropertyInfo, PropertyDescriptor>();
+        private const TypeAttributes ModuleBuilderTypeAttributes = TypeAttributes.Sealed | TypeAttributes.NotPublic | TypeAttributes.Class | TypeAttributes.BeforeFieldInit | TypeAttributes.AutoClass | TypeAttributes.Public;
+
+        private const MethodAttributes ConstructorMethodAttributes = MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
+
         internal HyperTypeDescriptor(ICustomTypeDescriptor parent)
             : base(parent)
         {
-            propertyCollections = WrapProperties(parent.GetProperties());
+            _propertyCollections = WrapProperties(parent.GetProperties());
         }
-        public sealed override PropertyDescriptorCollection GetProperties(Attribute[] attributes)
+        public override PropertyDescriptorCollection GetProperties(Attribute[] attributes)
         {
-            return propertyCollections;
+            return _propertyCollections;
         }
-        public sealed override PropertyDescriptorCollection GetProperties()
+        public override PropertyDescriptorCollection GetProperties()
         {
-            return propertyCollections;
+            return _propertyCollections;
         }
         private static PropertyDescriptorCollection WrapProperties(PropertyDescriptorCollection oldProps)
         {
-            PropertyDescriptor[] newProps = new PropertyDescriptor[oldProps.Count];
-            int index = 0;
-            bool changed = false;
+            var newProps = new PropertyDescriptor[oldProps.Count];
+            var index = 0;
+            var changed = false;
             // HACK: how to identify reflection, given that the class is internal...
-            Type wrapMe = Assembly.GetAssembly(typeof(PropertyDescriptor)).GetType("System.ComponentModel.ReflectPropertyDescriptor");
+            var wrapMe = Assembly.GetAssembly(typeof(PropertyDescriptor)).GetType("System.ComponentModel.ReflectPropertyDescriptor");
             foreach (PropertyDescriptor oldProp in oldProps)
             {
-                PropertyDescriptor pd = oldProp;
+                var pd = oldProp;
                 // if it looks like reflection, try to create a bespoke descriptor
                 if (ReferenceEquals(wrapMe, pd.GetType()) && TryCreatePropertyDescriptor(ref pd))
                 {
@@ -45,41 +49,40 @@ namespace Monocle.HyperPropertyDescriptor
             return changed ? new PropertyDescriptorCollection(newProps, true) : oldProps;
         }
 
-        static readonly ModuleBuilder moduleBuilder;
-        static int counter;
+        private static readonly ModuleBuilder ModuleBuilder;
+        private static int _counter;
         static HyperTypeDescriptor()
         {
-            AssemblyName an = new AssemblyName("Hyper.ComponentModel.dynamic");
-            AssemblyBuilder ab = AppDomain.CurrentDomain.DefineDynamicAssembly(an, AssemblyBuilderAccess.Run);
-            moduleBuilder = ab.DefineDynamicModule("Hyper.ComponentModel.dynamic.dll");
-
+            var an = new AssemblyName("Hyper.ComponentModel.dynamic");
+            var ab = AppDomain.CurrentDomain.DefineDynamicAssembly(an, AssemblyBuilderAccess.Run);
+            ModuleBuilder = ab.DefineDynamicModule("Hyper.ComponentModel.dynamic.dll");
         }
 
         private static bool TryCreatePropertyDescriptor(ref PropertyDescriptor descriptor)
         {
             try
             {
-                PropertyInfo property = descriptor.ComponentType.GetProperty(descriptor.Name);
+                var property = descriptor.ComponentType.GetProperty(descriptor.Name);
                 if (property == null) return false;
 
-                lock (properties)
+                lock (Properties)
                 {
                     PropertyDescriptor foundBuiltAlready;
-                    if (properties.TryGetValue(property, out foundBuiltAlready))
+                    if (Properties.TryGetValue(property, out foundBuiltAlready))
                     {
                         descriptor = foundBuiltAlready;
                         return true;
                     }
 
-                    string name = "_c" + Interlocked.Increment(ref counter).ToString();
-                    TypeBuilder tb = moduleBuilder.DefineType(name, TypeAttributes.Sealed | TypeAttributes.NotPublic | TypeAttributes.Class | TypeAttributes.BeforeFieldInit | TypeAttributes.AutoClass | TypeAttributes.Public, typeof(ChainingPropertyDescriptor));
+                    var name = "_c" + Interlocked.Increment(ref _counter).ToString();
+                    var tb = ModuleBuilder.DefineType(name, ModuleBuilderTypeAttributes, typeof(ChainingPropertyDescriptor));
 
                     // ctor calls base
-                    ConstructorBuilder cb = tb.DefineConstructor(MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, CallingConventions.Standard, new Type[] { typeof(PropertyDescriptor) });
-                    ILGenerator il = cb.GetILGenerator();
+                    var cb = tb.DefineConstructor(ConstructorMethodAttributes, CallingConventions.Standard, new [] { typeof(PropertyDescriptor) });
+                    var il = cb.GetILGenerator();
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldarg_1);
-                    il.Emit(OpCodes.Call, typeof(ChainingPropertyDescriptor).GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { typeof(PropertyDescriptor) }, null));
+                    il.Emit(OpCodes.Call, typeof(ChainingPropertyDescriptor).GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, null, new [] { typeof(PropertyDescriptor) }, null));
                     il.Emit(OpCodes.Ret);
 
                     MethodBuilder mb;
@@ -234,7 +237,7 @@ namespace Monocle.HyperPropertyDescriptor
                         return false;
                     }
                     descriptor = newDesc;
-                    properties.Add(property, descriptor);
+                    Properties.Add(property, descriptor);
                     return true;
                 }
             }

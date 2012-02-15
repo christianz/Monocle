@@ -70,6 +70,39 @@ namespace Monocle
             return ExecuteReader(cmdText, new {});
         }
 
+        public static DataTable ExecuteDataTable(string cmdText)
+        {
+            return ExecuteDataTable(cmdText, null);
+        }
+
+        public static DataTable ExecuteDataTable(string cmdText, object parameters)
+        {
+            return ExecuteDataTable(cmdText, GetDbParameters(parameters));
+        }
+
+        public static DataTable ExecuteDataTable(string cmdText, IEnumerable<Parameter> parameters)
+        {
+            var isStoredProcedure = IsStoredProcedure(cmdText);
+
+            var cmd = new SqlCommand(cmdText)
+                          {
+                              CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text
+                          };
+
+            foreach (var p in parameters ?? new List<Parameter>(0))
+                cmd.Parameters.AddWithValue(p.Name, p.Value);
+
+            var sqlRunner = new MsSqlCommand(_connectionString, cmd);
+
+            if (_useProfiling)
+            {
+                var profiler = new MsSqlProfiler();
+                sqlRunner.Profile(profiler);
+            }
+
+            return sqlRunner.ExecuteDataTable();
+        }
+
         public static IEnumerable<T> ExecuteList<T>(string cmdText) where T : new()
         {
             return ExecuteList<T>(cmdText, null);
@@ -123,66 +156,12 @@ namespace Monocle
                 return default(T);
 
             var scalarValue = dt.GetValue(0);
-            return (T)ChangeType(scalarValue, typeof (T));
+            return (T)TypeHelper.ChangeType(scalarValue, typeof (T));
         }
 
         public static T ExecuteScalar<T>(string cmdText)
         {
             return ExecuteScalar<T>(cmdText, null);
-        }
-
-        public static object ChangeType(object value, Type type)
-        {
-            if (value == DBNull.Value)
-            {
-                if (type == typeof(Guid))
-                    return Guid.Empty;
-
-                if (type == typeof(Int32))
-                    return 0;
-
-                if (type == typeof(Single))
-                    return 0F;
-
-                if (type == typeof(Boolean))
-                    return false;
-
-                if (type == typeof(DateTime))
-                    return DateTime.MinValue;
-
-                return null;
-            }
-
-            if (value == null)
-            {
-                if (type.IsGenericType)
-                    return Activator.CreateInstance(type);
-
-                return null;
-            }
-
-            if (type == value.GetType())
-                return value;
-
-            if (type.IsEnum)
-            {
-                if (value is string)
-                    return Enum.Parse(type, value as string);
-
-                return Enum.ToObject(type, value);
-            }
-
-            if (!type.IsInterface && type.IsGenericType)
-            {
-                var innerType = type.GetGenericArguments()[0];
-                var innerValue = ChangeType(value, innerType);
-                return Activator.CreateInstance(type, new[] { innerValue });
-            }
-
-            if (!(value is IConvertible))
-                return value;
-
-            return Convert.ChangeType(value, type);
         }
 
         public static T FindById<T>(Guid id) where T : Persistable, new()
@@ -228,7 +207,9 @@ namespace Monocle
             var isStoredProcedure = IsStoredProcedure(cmdText);
 
             var cmd = new SqlCommand(cmdText)
-                          {CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text};
+                          {
+                              CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text
+                          };
 
             foreach (var p in parameters ?? new List<Parameter>(0))
                 cmd.Parameters.AddWithValue(p.Name, p.Value);
@@ -242,7 +223,7 @@ namespace Monocle
             }
 
             if (expectsResults)
-                return sqlRunner.ExecuteDataTable();
+                return sqlRunner.ExecuteReader();
 
             sqlRunner.ExecuteNonCommand();
             return null;
@@ -275,16 +256,12 @@ namespace Monocle
 
         private static IEnumerable<Parameter> GetDbParameters(object parameters)
         {
-            var list = new List<Parameter>();
-
             if (parameters == null)
-                return list.ToArray();
+                return new List<Parameter>(0);
 
-            list.AddRange(from PropertyDescriptor descriptor in TypeDescriptor.GetProperties(parameters).AsParallel()
+            return from PropertyDescriptor descriptor in TypeDescriptor.GetProperties(parameters).AsParallel()
                           let value = descriptor.GetValue(parameters)
-                          select new Parameter(descriptor.Name, value));
-
-            return list.ToArray();
+                          select new Parameter(descriptor.Name, value);
         }
 
         #region Logging

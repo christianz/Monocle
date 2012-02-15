@@ -10,7 +10,7 @@ namespace Monocle.HyperPropertyDescriptor
     {
         public static void Add(Type type)
         {
-            TypeDescriptionProvider parent = TypeDescriptor.GetProvider(type);
+            var parent = TypeDescriptor.GetProvider(type);
             TypeDescriptor.AddProvider(new HyperTypeDescriptionProvider(parent), type);
         }
         public HyperTypeDescriptionProvider() : this(typeof(object)) { }
@@ -18,25 +18,25 @@ namespace Monocle.HyperPropertyDescriptor
         public HyperTypeDescriptionProvider(TypeDescriptionProvider parent) : base(parent) { }
         public static void Clear(Type type)
         {
-            lock (descriptors)
+            lock (Descriptors)
             {
-                descriptors.Remove(type);
+                Descriptors.Remove(type);
             }
         }
         public static void Clear()
         {
-            lock (descriptors)
+            lock (Descriptors)
             {
-                descriptors.Clear();
+                Descriptors.Clear();
             }
         }
-        private static readonly Dictionary<Type, ICustomTypeDescriptor> descriptors = new Dictionary<Type, ICustomTypeDescriptor>();
-        public sealed override ICustomTypeDescriptor GetTypeDescriptor(Type objectType, object instance)
+        private static readonly Dictionary<Type, ICustomTypeDescriptor> Descriptors = new Dictionary<Type, ICustomTypeDescriptor>();
+        public override ICustomTypeDescriptor GetTypeDescriptor(Type objectType, object instance)
         {
-            ICustomTypeDescriptor descriptor;
-            lock (descriptors)
+            lock (Descriptors)
             {
-                if (!descriptors.TryGetValue(objectType, out descriptor))
+                ICustomTypeDescriptor descriptor;
+                if (!Descriptors.TryGetValue(objectType, out descriptor))
                 {
                     try
                     {
@@ -60,19 +60,19 @@ namespace Monocle.HyperPropertyDescriptor
             // get the parent descriptor and add to the dictionary so that
             // building the new descriptor will use the base rather than recursing
             ICustomTypeDescriptor descriptor = base.GetTypeDescriptor(objectType, null);
-            descriptors.Add(objectType, descriptor);
+            Descriptors.Add(objectType, descriptor);
             try
             {
                 // build a new descriptor from this, and replace the lookup
                 descriptor = new HyperTypeDescriptor(descriptor);
-                descriptors[objectType] = descriptor;
+                Descriptors[objectType] = descriptor;
                 return descriptor;
             }
             catch
             {   // rollback and throw
                 // (perhaps because the specific caller lacked permissions;
                 // another caller may be successful)
-                descriptors.Remove(objectType);
+                Descriptors.Remove(objectType);
                 throw;
             }
         }

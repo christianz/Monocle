@@ -13,26 +13,26 @@ namespace Monocle
 
         public string GetSaveQuery(Persistable obj, IEnumerable<Parameter> parameters)
         {
+            var parameterList = parameters.ToList();
             var exists = obj.ExistsInDb;
             var name = obj.TableName;
 
             if (exists.HasValue)
             {
-                return exists.Value ? GetUpdateStatement(name, parameters) : GetInsertStatement(name, parameters);
+                return exists.Value ? GetUpdateStatement(name, parameterList) : GetInsertStatement(name, parameterList);
             }
 
-            return string.Format("IF EXISTS (SELECT TOP 1 * FROM [dbo].[" + name + "] WHERE [Id]=@Id) {0} ELSE {1}",
-                                 GetUpdateStatement(name, parameters),
-                                 GetInsertStatement(name, parameters));
+            return string.Concat("IF EXISTS (SELECT TOP 1 * FROM [dbo].[", name, "] WHERE [Id]=@Id) ", 
+                GetUpdateStatement(name, parameterList), " ELSE {1}", GetInsertStatement(name, parameterList));
         }
 
         private static string GetUpdateStatement(string tableName, IEnumerable<Parameter> parameters)
         {
-            var query = "UPDATE TOP (1) [dbo].[" + tableName + "] SET ";
+            var query = string.Concat("UPDATE TOP (1) [dbo].[", tableName, "] SET ");
 
             foreach (var parameter in parameters)
             {
-                query += parameter.Name + "=@" + parameter.Name + ",";
+                query = string.Concat(query, parameter.Name, "=@", parameter.Name, ",");
             }
 
             query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));
@@ -59,7 +59,7 @@ namespace Monocle
 
             foreach (var parameter in lParameters)
             {
-                query += "@" + parameter.Name + ",";
+                query = string.Concat("@", parameter.Name, ",");
             }
 
             query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));

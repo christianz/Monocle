@@ -141,7 +141,7 @@ namespace Monocle
                 if (drVal == null)
                     continue;
 
-                var resVal = MonocleDb.ChangeType(drVal, prop.PropertyType);
+                var resVal = TypeHelper.ChangeType(drVal, prop.PropertyType);
 
                 prop.SetValue(objInstance, resVal);
             }
@@ -183,6 +183,8 @@ namespace Monocle
             {
                 yield return Transform<T>(reader);
             }
+
+            reader.Close();
         }
 
     }

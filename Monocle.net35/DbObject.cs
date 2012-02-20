@@ -275,8 +275,12 @@ namespace Monocle
             foreach (PropertyDescriptor prop in propertyInfo)
             {
                 var key = prop.Name.ToLower();
+                int ordinal;
 
-                var drVal = objData[cols[key]];
+                if (!cols.TryGetValue(key, out ordinal))
+                    throw new Exception("Couldn't get the ordinal for column " + key + ".");
+
+                var drVal = objData[ordinal];
 
                 if (drVal == null)
                     continue;

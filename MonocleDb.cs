@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Runtime.Caching;
 using System.Text;
+using Monocle.Caching;
 using Monocle.Profiler;
 
 namespace Monocle
@@ -15,16 +14,11 @@ namespace Monocle
     {
         private const int WhereClauseDefaultStringBuilderSize = 64;
 
-        private static bool _useCaching;
         private static bool _useProfiling;
         private static string _connectionString;
         private static IMonocleLogWriter _logWriter;
+        private static IMonocleCache _cache = new MonocleMemoryCache();
 
-        private static readonly MemoryCache Cache = new MemoryCache("memory", new NameValueCollection
-                                                                                      {
-                                                                                          { "CacheMemoryLimitMegabytes", "20" }
-                                                                                      });
-        
         public static void Initialize(string connectionString)
         {
             Initialize(connectionString, true);
@@ -53,9 +47,9 @@ namespace Monocle
         public static void Initialize(string connectionString, bool useCaching, bool useProfiling, IMonocleLogWriter logWriter)
         {
             _connectionString = connectionString;
-            _useCaching = useCaching;
             _useProfiling = useProfiling;
             _logWriter = logWriter;
+            _cache = new MonocleMemoryCache();
         }
 
         public static IDataReader ExecuteReader(string cmdText, object parameters)
@@ -166,22 +160,18 @@ namespace Monocle
 
         public static T FindById<T>(Guid id) where T : Persistable, new()
         {
-            var tableName = TableAttribute.GetTableName(typeof(T));
+            var tableDef = TableDefinition.FromType(typeof(T));
             
-            var cacheId = string.Concat(tableName, "_", id);
+            var cacheId = string.Concat(tableDef, "_", id);
 
-            if (_useCaching && Cache.Contains(cacheId))
-            {
-                var cacheObj = Cache[cacheId];
+            var cacheObj = _cache.Get<T>(cacheId);
 
-                if (cacheObj != null && cacheObj.GetType() == typeof(T))
-                    return (T)Cache[cacheId];
-            }
+            if (cacheObj != null)
+                return cacheObj;
 
-            var result = Execute<T>(string.Concat("select top 1 * from [", tableName, "] where [id] = @id"), new[] { new Parameter("id", id) });
+            var result = Execute<T>(string.Concat("select top 1 * from [", tableDef.TableName, "] where [id] = @id"), new[] { new Parameter("id", id) });
 
-            if (_useCaching && result != null)
-                Cache[cacheId] = result;
+            _cache.Add(cacheId, result);
 
             if (result != null)
                 result.ExistsInDb = true;
@@ -191,7 +181,7 @@ namespace Monocle
 
         public static T FindBy<T>(object parameters) where T : Persistable, new()
         {
-            var tableName = TableAttribute.GetTableName(typeof(T));
+            var tableName = TableDefinition.FromType(typeof(T)).TableName;
 
             var sqlParams = GetDbParameters(parameters);
 
@@ -264,6 +254,11 @@ namespace Monocle
                           select new Parameter(descriptor.Name, value);
         }
 
+        public static IMonocleCache Cache
+        {
+            get { return _cache; }
+        }
+
         #region Logging
 
         private static void WriteToLog(SqlCommand cmd)
@@ -281,32 +276,6 @@ namespace Monocle
         private static void WriteToLog(string text)
         {
             _logWriter.Write(DateTime.Now, text);
-        }
-
-        #endregion
-
-        #region Caching
-        
-        internal static void SetDirty(string cacheId)
-        {
-            if (_useCaching)
-                Cache.Remove(cacheId);
-        }
-
-        public static Dictionary<string, object> GetCache()
-        {
-            return Cache.ToDictionary(o => o.Key, o => o.Value);
-        }
-
-        public static void ClearCache()
-        {
-            Cache.Trim(100);
-        }
-
-        public static bool Caching
-        {
-            get { return _useCaching; }
-            set { _useCaching = value; }
         }
 
         #endregion

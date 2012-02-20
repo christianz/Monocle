@@ -7,23 +7,23 @@ namespace Monocle
     {
         private static readonly IQueryFactory QueryGenerator = new MsSqlQueryFactory();
 
-        public abstract Guid Id { get; set; }
+        public Guid Id { get; set; }
 
         internal bool? ExistsInDb { get; set; }
-        internal string TableName { get; set; }
+        internal TableDefinition TableDef { get; set; }
 
         private readonly Type _type;
 
         protected string CacheId
         {
-            get { return TableName + "_" + Id; }
+            get { return TableDef + "_" + Id; }
         }
 
         protected Persistable()
         {
             _type = GetType();
 
-            TableName = TableAttribute.GetTableName(_type);
+            TableDef = TableDefinition.FromType(_type);
         }
 
         public new virtual void Save()
@@ -33,7 +33,7 @@ namespace Monocle
             var query = QueryGenerator.GetSaveQuery(this, parameters);
 
             MonocleDb.Execute(query, parameters);
-            MonocleDb.SetDirty(CacheId);
+            MonocleDb.Cache.SetDirty(CacheId);
 
             ExistsInDb = true;
         }
@@ -43,7 +43,7 @@ namespace Monocle
             var query = QueryGenerator.GetDeleteQuery(this);
 
             MonocleDb.Execute(query);
-            MonocleDb.SetDirty(CacheId);
+            MonocleDb.Cache.SetDirty(CacheId);
 
             ExistsInDb = false;
         }

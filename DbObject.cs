@@ -9,13 +9,22 @@ namespace Monocle
 {
     public abstract class DbObject
     {
-        private static readonly Dictionary<string, PropertyDescriptorCollection> ReadColumns = new Dictionary<string, PropertyDescriptorCollection>(128);
-        private static readonly Dictionary<string, PropertyDescriptorCollection> WriteColumns = new Dictionary<string, PropertyDescriptorCollection>(128);
+        private static readonly Dictionary<string, PropertyDescriptorCollection> ReadColumns =
+            new Dictionary<string, PropertyDescriptorCollection>(128);
+
+        private static readonly Dictionary<string, PropertyDescriptorCollection> WriteColumns =
+            new Dictionary<string, PropertyDescriptorCollection>(128);
+
         private static readonly HashSet<string> CachedHyperTypes = new HashSet<string>();
         private static readonly Dictionary<string, int> CachedColumnOrdinals = new Dictionary<string, int>();
 
-        public virtual void Save() { }
-        public virtual void Delete() { }
+        public virtual void Save()
+        {
+        }
+
+        public virtual void Delete()
+        {
+        }
 
         /// <summary>
         /// Transforms an instance of type T into a list of parameters that other components can use to update or insert into the database.
@@ -28,6 +37,9 @@ namespace Monocle
         {
             var typeName = type.FullName;
 
+            if (typeName == null)
+                throw new ArgumentException("The FullName of type " + type + " is null.");
+
             if (!CachedHyperTypes.Contains(typeName))
             {
                 CachedHyperTypes.Add(typeName);
@@ -38,21 +50,7 @@ namespace Monocle
 
             if (!WriteColumns.TryGetValue(typeName, out srcPropertyInfo))
             {
-                srcPropertyInfo = BuildPropertyInfo(dbObject);
-                var propList = new List<PropertyDescriptor>(srcPropertyInfo.Count);
-
-                foreach (PropertyDescriptor p in srcPropertyInfo.AsParallel())
-                {
-                    var objColAttr = p.Attributes[typeof(ColumnAttribute)];
-                    var colAttr = objColAttr as ColumnAttribute;
-
-                    if (colAttr == null || colAttr.Identity)
-                        continue;
-
-                    propList.Add(p);
-                }
-
-                WriteColumns[typeName] = srcPropertyInfo = new PropertyDescriptorCollection(propList.ToArray());
+                WriteColumns[typeName] = BuildPropertyInfo(dbObject);
             }
 
             foreach (PropertyDescriptor prop in srcPropertyInfo.AsParallel())
@@ -62,7 +60,7 @@ namespace Monocle
 
                 if (value is DateTime)
                 {
-                    var dtVal = (DateTime)value;
+                    var dtVal = (DateTime) value;
 
                     if (dtVal == DateTime.MinValue)
                         value = null;
@@ -75,7 +73,7 @@ namespace Monocle
 
         public IEnumerable<Parameter> GetParameters<T>() where T : DbObject
         {
-            return GetParameters(typeof(T), (T)this);
+            return GetParameters(typeof (T), (T) this);
         }
 
         /// <summary>
@@ -84,7 +82,31 @@ namespace Monocle
         /// <returns>A PropertyDescriptorCollection containing all the properties for the given type.</returns>
         private static PropertyDescriptorCollection BuildPropertyInfo(object objInstance)
         {
-            return TypeDescriptor.GetProperties(objInstance);
+            var props = TypeDescriptor.GetProperties(objInstance);
+            var tableDef = TableDefinition.FromType(objInstance.GetType());
+            var toMap = (from PropertyDescriptor p in props where ShouldMapProperty(tableDef, p) select p).ToList();
+
+            return new PropertyDescriptorCollection(toMap.ToArray());
+        }
+
+        private static bool ShouldMapProperty(TableDefinition tableDef, PropertyDescriptor p)
+        {
+            if (tableDef.ColumnsAreAutoMapped)
+            {
+                var unmappedAttr = p.Attributes[typeof (UnmappedAttribute)];
+
+                if (unmappedAttr != null)
+                    return false;
+            }
+            else
+            {
+                var colAttr = p.Attributes[typeof (ColumnAttribute)];
+
+                if (colAttr == null || ((ColumnAttribute)colAttr).Identity)
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -96,23 +118,30 @@ namespace Monocle
         /// <returns>A new instance of T with the values from the DataRow.</returns>
         private static T Transform<T>(IDataRecord objData) where T : new()
         {
-            var type = typeof(T);
+            var type = typeof (T);
 
             if (type.IsValueType)
             {
-                return (T)objData.GetValue(0);
+                return (T)objData[0];
             }
 
             var typeName = type.FullName;
 
-            if (!CachedHyperTypes.Contains(typeName))
-            {
-                CachedHyperTypes.Add(typeName);
-                HyperTypeDescriptionProvider.Add(type);
-            }
+            CacheTypeDescriptor(type, typeName);
 
             var objInstance = ParameterlessConstructor<T>.Create();
+            var propertyInfo = GetPropertyInfo(objInstance, typeName);
 
+            foreach (PropertyDescriptor prop in propertyInfo.AsParallel())
+            {
+                SetProperty(objData, objInstance, typeName, prop);
+            }
+
+            return objInstance;
+        }
+
+        private static PropertyDescriptorCollection GetPropertyInfo<T>(T objInstance, string typeName) where T : new()
+        {
             PropertyDescriptorCollection propertyInfo;
 
             if (!ReadColumns.TryGetValue(typeName, out propertyInfo))
@@ -120,33 +149,41 @@ namespace Monocle
                 propertyInfo = BuildPropertyInfo(objInstance);
                 ReadColumns[typeName] = propertyInfo;
             }
+            return propertyInfo;
+        }
 
-            foreach (PropertyDescriptor prop in propertyInfo.AsParallel())
-            {
-                var objColAttr = prop.Attributes[typeof (ColumnAttribute)];
-                var colAttr = objColAttr as ColumnAttribute;
+        private static void CacheTypeDescriptor(Type type, string typeName)
+        {
+            if (CachedHyperTypes.Contains(typeName)) 
+                return;
 
-                if (colAttr == null)
-                    continue;
+            CachedHyperTypes.Add(typeName);
+            HyperTypeDescriptionProvider.Add(type);
+        }
 
-                var key = prop.Name.ToLower();
-                var typeKey = typeName + key;
-                int ord;
+        private static void SetProperty<T>(IDataRecord objData, T objInstance, string typeName, PropertyDescriptor prop) where T : new()
+        {
+            var objColAttr = prop.Attributes[typeof (ColumnAttribute)];
+            var colAttr = objColAttr as ColumnAttribute;
 
-                if (!CachedColumnOrdinals.TryGetValue(typeKey, out ord))
-                    CachedColumnOrdinals[typeKey] = ord = objData.GetOrdinal(key);
+            if (colAttr == null)
+                return;
 
-                var drVal = objData.GetValue(ord);
+            var key = prop.Name.ToLower();
+            var typeKey = typeName + key;
+            int ord;
 
-                if (drVal == null)
-                    continue;
+            if (!CachedColumnOrdinals.TryGetValue(typeKey, out ord))
+                CachedColumnOrdinals[typeKey] = ord = objData.GetOrdinal(key);
 
-                var resVal = TypeHelper.ChangeType(drVal, prop.PropertyType);
+            var drVal = objData.GetValue(ord);
 
-                prop.SetValue(objInstance, resVal);
-            }
+            if (drVal == null)
+                return;
 
-            return objInstance;
+            var resVal = TypeHelper.ChangeType(drVal, prop.PropertyType);
+
+            prop.SetValue(objInstance, resVal);
         }
 
         /// <summary>
@@ -179,13 +216,76 @@ namespace Monocle
         /// <returns>An IEnumerable containing a collection of instances of type T</returns>
         public static IEnumerable<T> ListFromParameters<T>(IDataReader reader) where T : new()
         {
+            var fldCnt = reader.FieldCount;
+            var cols = new Dictionary<string, int>();
+
+            for (var i = 0; i < fldCnt; i++)
+            {
+                cols.Add(reader.GetName(i).ToLower(), i);
+            }
+
+            var lst = new List<object[]>();
+
             while (reader.Read())
             {
-                yield return Transform<T>(reader);
+                var objArr = new object[fldCnt];
+                reader.GetValues(objArr);
+                lst.Add(objArr);
+            }
+
+            foreach (var p in lst.AsParallel())
+            {
+                yield return Transform<T>(cols, p);
             }
 
             reader.Close();
         }
 
+        private static T Transform<T>(IDictionary<string, int> cols, object[] objData) where T : new()
+        {
+            var type = typeof(T);
+
+            if (type.IsValueType)
+            {
+                return (T)objData[0];
+            }
+
+            var typeName = type.FullName;
+
+            if (typeName == null)
+                throw new ArgumentException("The FullName of type " + type + " is null.");
+
+            if (!CachedHyperTypes.Contains(typeName))
+            {
+                CachedHyperTypes.Add(typeName);
+                HyperTypeDescriptionProvider.Add(type);
+            }
+
+            var objInstance = ParameterlessConstructor<T>.Create();
+
+            PropertyDescriptorCollection propertyInfo;
+
+            if (!ReadColumns.TryGetValue(typeName, out propertyInfo))
+            {
+                propertyInfo = BuildPropertyInfo(objInstance);
+                ReadColumns[typeName] = propertyInfo;
+            }
+
+            foreach (PropertyDescriptor prop in propertyInfo.AsParallel())
+            {
+                var key = prop.Name.ToLower();
+
+                var drVal = objData[cols[key]];
+
+                if (drVal == null)
+                    continue;
+
+                var resVal = TypeHelper.ChangeType(drVal, prop.PropertyType);
+
+                prop.SetValue(objInstance, resVal);
+            }
+
+            return objInstance;
+        }
     }
 }

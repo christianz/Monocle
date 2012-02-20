@@ -8,14 +8,14 @@ namespace Monocle
     {
         public string GetDeleteQuery(Persistable obj)
         {
-            return "DELETE FROM [dbo].[" + obj.TableName + "] WHERE [Id]=@Id";
+            return "DELETE FROM [dbo].[" + obj.TableDef + "] WHERE [Id]=@Id";
         }
 
         public string GetSaveQuery(Persistable obj, IEnumerable<Parameter> parameters)
         {
             var parameterList = parameters.ToList();
             var exists = obj.ExistsInDb;
-            var name = obj.TableName;
+            var name = obj.TableDef.TableName;
 
             if (exists.HasValue)
             {

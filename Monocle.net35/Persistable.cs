@@ -4,6 +4,7 @@ using Monocle.Utils;
 
 namespace Monocle
 {
+    [Serializable]
     public abstract class Persistable : DbObject
     {
         private static readonly IQueryFactory QueryGenerator = new MsSqlQueryFactory();

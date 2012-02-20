@@ -8,6 +8,7 @@ using Monocle.Utils;
 
 namespace Monocle
 {
+    [Serializable]
     public abstract class DbObject
     {
         private static readonly Dictionary<string, PropertyDescriptorCollection> ReadColumns =

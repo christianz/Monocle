@@ -42,6 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Caching\IMonocleCache.cs" />
+    <Compile Include="Caching\MonocleDictionaryCache.cs" />
     <Compile Include="ColumnAttribute.cs" />
     <Compile Include="IQueryFactory.cs" />
     <Compile Include="Caching\MonocleMemoryCache.cs" />

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using Monocle.Caching;
 using Monocle.Profiler;
+using Monocle.Utils;
 
 namespace Monocle
 {

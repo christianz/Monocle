@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Monocle
 {
-    class MsSqlQueryFactory : IQueryFactory
+    internal class MsSqlQueryFactory : IQueryFactory
     {
         public string GetDeleteQuery(Persistable obj)
         {

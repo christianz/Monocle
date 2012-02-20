@@ -47,7 +47,8 @@
     <Compile Include="IQueryFactory.cs" />
     <Compile Include="Caching\MonocleMemoryCache.cs" />
     <Compile Include="MsSqlQueryFactory.cs" />
-    <Compile Include="ParameterlessConstructor.cs" />
+    <Compile Include="Utils\AutoMapColumns.cs" />
+    <Compile Include="Utils\ParameterlessConstructor.cs" />
     <Compile Include="Persistable.cs" />
     <Compile Include="HyperPropertyDescriptor\ChainingPropertyDescriptor.cs" />
     <Compile Include="HyperPropertyDescriptor\HyperTypeDescriptionProvider.cs" />
@@ -63,8 +64,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MsSqlCommand.cs" />
     <Compile Include="TableAttribute.cs" />
-    <Compile Include="TableDefinition.cs" />
-    <Compile Include="TypeHelper.cs" />
+    <Compile Include="Utils\TableDefinition.cs" />
+    <Compile Include="Utils\TypeHelper.cs" />
     <Compile Include="UnmappedAttribute.cs" />
     <Compile Include="ViewObject.cs" />
   </ItemGroup>

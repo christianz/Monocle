@@ -5,7 +5,7 @@ using Monocle.Profiler;
 
 namespace Monocle
 {
-    public class MsSqlCommand : IDisposable
+    internal class MsSqlCommand : IDisposable
     {
         private IDbProfiler _profiler;
         private bool _isProfiling;

@@ -52,17 +52,17 @@ namespace Monocle
             _logWriter = logWriter;
         }
 
-        public static DataTable GetDataTable(string cmdText)
+        public static DataTable ExecuteDataTable(string cmdText)
         {
-            return GetDataTable(cmdText, null);
+            return ExecuteDataTable(cmdText, null);
         }
 
-        public static DataTable GetDataTable(string cmdText, object parameters)
+        public static DataTable ExecuteDataTable(string cmdText, object parameters)
         {
-            return GetDataTable(cmdText, GetDbParameters(parameters));
+            return ExecuteDataTable(cmdText, GetDbParameters(parameters));
         }
 
-        public static DataTable GetDataTable(string cmdText, IEnumerable<Parameter> parameters)
+        public static DataTable ExecuteDataTable(string cmdText, IEnumerable<Parameter> parameters)
         {
             var isStoredProcedure = IsStoredProcedure(cmdText);
 
@@ -85,12 +85,19 @@ namespace Monocle
             return sqlRunner.ExecuteDataTable();
         }
 
-        public static IEnumerable<T> List<T>(string cmdText) where T : new()
+        public static IEnumerable<T> List<T>() where T : new()
         {
-            return List<T>(cmdText, null);
+            var tableDef = TableDefinition.FromType(typeof(T));
+
+            return ExecuteList<T>(string.Concat("select * from [dbo].[", tableDef.TableName, "]"));
         }
 
-        public static IEnumerable<T> List<T>(string cmdText, object parameters) where T : new()
+        public static IEnumerable<T> ExecuteList<T>(string cmdText) where T : new()
+        {
+            return ExecuteList<T>(cmdText, null);
+        }
+
+        public static IEnumerable<T> ExecuteList<T>(string cmdText, object parameters) where T : new()
         {
             var dt = ExecuteReader(cmdText, true, GetDbParameters(parameters));
 

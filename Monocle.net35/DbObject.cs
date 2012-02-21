@@ -11,15 +11,8 @@ namespace Monocle
     [Serializable]
     public abstract class DbObject
     {
-        private static readonly Dictionary<string, PropertyDescriptorCollection> ReadColumns =
-            new Dictionary<string, PropertyDescriptorCollection>(128);
-
-        private static readonly Dictionary<string, PropertyDescriptorCollection> WriteColumns =
-            new Dictionary<string, PropertyDescriptorCollection>(128);
-
-        private static readonly Dictionary<string, Dictionary<string, int>> CachedColumnDefs =
-            new Dictionary<string, Dictionary<string, int>>();
-
+        private static readonly Dictionary<string, PropertyDescriptorCollection> CachedPropertyDescriptors = new Dictionary<string, PropertyDescriptorCollection>(128);
+        private static readonly Dictionary<string, Dictionary<string, int>> CachedColumnDefs = new Dictionary<string, Dictionary<string, int>>();
         private static readonly HashSet<string> CachedHyperTypes = new HashSet<string>();
 
         public virtual void Save()
@@ -46,7 +39,7 @@ namespace Monocle
 
             CacheTypeDescriptor(type, typeName);
 
-            var srcPropertyInfo = GetWritePropertyInfo(dbObject, typeName);
+            var srcPropertyInfo = GetPropertyDescriptors(dbObject, typeName);
 
             foreach (PropertyDescriptor prop in srcPropertyInfo)
             {
@@ -104,27 +97,14 @@ namespace Monocle
             return true;
         }
 
-        private static PropertyDescriptorCollection GetReadPropertyInfo<T>(T objInstance, string typeName) where T : new()
+        private static PropertyDescriptorCollection GetPropertyDescriptors<T>(T objInstance, string typeName)
         {
             PropertyDescriptorCollection propertyInfo;
 
-            if (!ReadColumns.TryGetValue(typeName, out propertyInfo))
+            if (!CachedPropertyDescriptors.TryGetValue(typeName, out propertyInfo))
             {
                 propertyInfo = BuildPropertyInfo(objInstance);
-                ReadColumns[typeName] = propertyInfo;
-            }
-
-            return propertyInfo;
-        }
-
-        private static PropertyDescriptorCollection GetWritePropertyInfo<T>(T objInstance, string typeName)
-        {
-            PropertyDescriptorCollection propertyInfo;
-
-            if (!WriteColumns.TryGetValue(typeName, out propertyInfo))
-            {
-                propertyInfo = BuildPropertyInfo(objInstance);
-                WriteColumns[typeName] = propertyInfo;
+                CachedPropertyDescriptors[typeName] = propertyInfo;
             }
 
             return propertyInfo;
@@ -238,7 +218,7 @@ namespace Monocle
 
             var objInstance = ParameterlessConstructor<T>.Create();
 
-            var propertyInfo = GetReadPropertyInfo(objInstance, typeName);
+            var propertyInfo = GetPropertyDescriptors(objInstance, typeName);
 
             foreach (PropertyDescriptor prop in propertyInfo)
             {

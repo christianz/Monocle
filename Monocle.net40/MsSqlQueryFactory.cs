@@ -22,8 +22,9 @@ namespace Monocle
                 return exists.Value ? GetUpdateStatement(name, parameterList) : GetInsertStatement(name, parameterList);
             }
 
-            return string.Concat("IF EXISTS (SELECT TOP 1 * FROM [dbo].[", name, "] WHERE [Id]=@Id) ", 
-                GetUpdateStatement(name, parameterList), " ELSE {1}", GetInsertStatement(name, parameterList));
+            return string.Concat("IF EXISTS (SELECT 1 FROM [dbo].[", name, "] WHERE [Id]=@Id) ",
+                                 GetUpdateStatement(name, parameterList), " ELSE {1}",
+                                 GetInsertStatement(name, parameterList));
         }
 
         private static string GetUpdateStatement(string tableName, IEnumerable<Parameter> parameters)
@@ -35,9 +36,7 @@ namespace Monocle
                 query = string.Concat(query, parameter.Name, "=@", parameter.Name, ",");
             }
 
-            query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));
-
-            query += " WHERE [Id] = @Id";
+            query += "[Id]=[Id] WHERE [Id] = @Id";
 
             return query;
         }

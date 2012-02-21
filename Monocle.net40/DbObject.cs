@@ -184,22 +184,18 @@ namespace Monocle
         /// <typeparam name="T">The type we want to transform the DataRow properties to.</typeparam>
         /// <param name="reader">A DataReader containing 1 record (if it contains more, an exception is thrown) to transform into an instance of type T</param>
         /// <returns>An instance of type T with the properties filled from the DataReader</returns>
-        internal static T FromParameters<T>(IDataReader reader) where T : class, new()
+        internal static T FromParameters<T>(IDataReader reader) where T :  new()
         {
             var type = typeof(T);
 
             if (type.IsValueType)
             {
-                reader.Read();
                 return (T)reader[0];
             }
 
             var typeName = GetTypeName(type);
 
             var cols = CacheColumnDefinitions(reader, typeName);
-
-            if (!reader.Read())
-                return default(T);
 
             var objArr = new object[cols.Count];
             reader.GetValues(objArr);
@@ -216,27 +212,9 @@ namespace Monocle
         /// <returns>An IEnumerable containing a collection of instances of type T</returns>
         public static IEnumerable<T> ListFromParameters<T>(IDataReader reader) where T : new()
         {
-            var type = typeof (T);
-
-            if (type.IsValueType)
-            {
-                while (reader.Read())
-                {
-                    yield return (T)reader[0];
-                }
-
-                yield break;
-            }
-
-            var typeName = GetTypeName(type);
-
-            var cols = CacheColumnDefinitions(reader, typeName);
-
             while (reader.Read())
             {
-                var objArr = new object[cols.Count];
-                reader.GetValues(objArr);
-                yield return Transform<T>(cols, objArr);
+                yield return FromParameters<T>(reader);
             }
         }
 

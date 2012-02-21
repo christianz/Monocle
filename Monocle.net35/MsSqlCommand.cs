@@ -8,7 +8,7 @@ namespace Monocle
     internal class MsSqlCommand : IDisposable
     {
         private IDbProfiler _profiler;
-        private bool _isProfiling;
+        private static bool _isProfiling;
         private readonly SqlConnection _sqlConn;
         private readonly SqlCommand _command;
 
@@ -43,7 +43,7 @@ namespace Monocle
             var dt = new DataTable("table");
 
             var da = new SqlDataAdapter(_command);
-            
+
             da.Fill(dt);
 
             _sqlConn.Close();

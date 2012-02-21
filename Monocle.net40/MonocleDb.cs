@@ -131,6 +131,9 @@ namespace Monocle
 
             var reader = ExecuteReader(cmdText, true, (IEnumerable<Parameter>) parameters);
 
+            if (!reader.Read())
+                return default(T);
+
             try
             {
                 return DbObject.FromParameters<T>(reader);
@@ -226,6 +229,9 @@ namespace Monocle
         private static T Execute<T>(string cmdText, IEnumerable<Parameter> parameters) where T : class, new()
         {
             var reader = ExecuteReader(cmdText, true, parameters);
+
+            if (!reader.Read())
+                return default(T);
 
             try
             {

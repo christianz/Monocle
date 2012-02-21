@@ -8,7 +8,7 @@ namespace Monocle
     internal class MsSqlCommand : IDisposable
     {
         private IDbProfiler _profiler;
-        private bool _isProfiling;
+        private static bool _isProfiling;
         private readonly SqlConnection _sqlConn;
         private readonly SqlCommand _command;
 

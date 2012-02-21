@@ -16,7 +16,7 @@ namespace Monocle.Utils
         {
             TableName = tableName;
             AutoMap = autoMap;
-            _columnsAreAutoMapped = autoMap == AutoMapColumns.All;
+            _columnsAreAutoMapped = (autoMap == AutoMapColumns.All);
         }
 
         internal static TableDefinition FromType(Type t)
@@ -31,17 +31,20 @@ namespace Monocle.Utils
 
         private static TableDefinition BuildTableDefinition(Type t)
         {
-            var customAttributes = t.GetCustomAttributes(typeof (TableAttribute), false);
+            var customAttributes = t.GetCustomAttributes(typeof(TableAttribute), false);
             var tableName = t.Name;
-            var autoMap = AutoMapColumns.All;
+            var autoMap = AutoMapColumns.None;
 
             foreach (var prop in customAttributes)
             {
-                var tableAttr = (TableAttribute) prop;
+                var tableAttr = (TableAttribute)prop;
 
-                if (tableAttr == null) continue;
+                if (tableAttr == null)
+                    continue;
 
-                tableName = tableAttr.TableName;
+                if (!string.IsNullOrEmpty(tableAttr.TableName))
+                    tableName = tableAttr.TableName;
+
                 autoMap = tableAttr.AutoMap;
 
                 break;

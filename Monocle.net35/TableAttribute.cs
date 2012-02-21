@@ -5,13 +5,13 @@ namespace Monocle
 {
     public class TableAttribute : Attribute
     {
-        public string TableName { get; private set; }
-        public AutoMapColumns AutoMap { get; private set; }
+        public string TableName;
+        public AutoMapColumns AutoMap;
 
-        public TableAttribute(string tableName, AutoMapColumns autoMap = AutoMapColumns.All)
+        public TableAttribute()
         {
-            TableName = tableName;
-            AutoMap = autoMap;
+            TableName = null;
+            AutoMap = AutoMapColumns.None;
         }
     }
 }

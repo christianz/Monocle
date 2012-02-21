@@ -139,7 +139,7 @@ namespace Monocle
             HyperTypeDescriptionProvider.Add(type);
         }
 
-        private static void SetProperty<T>(object[] objData, T objInstance, IDictionary<string, int> cols, PropertyDescriptor prop) where T : new()
+        private static void SetProperty<T>(T objInstance, IDictionary<string, int> cols, object[] objData, PropertyDescriptor prop) where T : new()
         {
             var key = prop.Name;
 
@@ -242,7 +242,7 @@ namespace Monocle
 
             foreach (PropertyDescriptor prop in propertyInfo)
             {
-                SetProperty(objData, objInstance, cols, prop);
+                SetProperty(objInstance, cols, objData, prop);
             }
 
             return objInstance;

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace Monocle
@@ -8,7 +7,7 @@ namespace Monocle
     {
         public string GetDeleteQuery(Persistable obj)
         {
-            return "DELETE FROM [dbo].[" + obj.TableDef + "] WHERE [Id]=@Id";
+            return string.Concat("DELETE FROM [dbo].[", obj.TableDef.TableName, "] WHERE [Id]=@Id");
         }
 
         public string GetSaveQuery(Persistable obj, IEnumerable<Parameter> parameters)
@@ -23,47 +22,50 @@ namespace Monocle
             }
 
             return string.Concat("IF EXISTS (SELECT 1 FROM [dbo].[", name, "] WHERE [Id]=@Id) ",
-                                 GetUpdateStatement(name, parameterList), " ELSE {1}",
+                                 GetUpdateStatement(name, parameterList), " ELSE ",
                                  GetInsertStatement(name, parameterList));
         }
 
         private static string GetUpdateStatement(string tableName, IEnumerable<Parameter> parameters)
         {
             var query = string.Concat("UPDATE TOP (1) [dbo].[", tableName, "] SET ");
+            var param = parameters.ToArray();
+            var numParams = param.Length - 1;
 
-            foreach (var parameter in parameters)
+            for (var i = 0; i < numParams; i++)
             {
-                query = string.Concat(query, parameter.Name, "=@", parameter.Name, ",");
+                var name = param[i].Name;
+
+                query = string.Concat(query, "[", name, "]", "=@", name, ",");
             }
 
-            query += "[Id]=[Id] WHERE [Id] = @Id";
+            var lastName = param[numParams].Name;
+
+            query = string.Concat(query, lastName, "=@", lastName);
+            query = string.Concat(query, " WHERE [Id]=@Id");
 
             return query;
         }
 
         private static string GetInsertStatement(string tableName, IEnumerable<Parameter> parameters)
         {
-            var lParameters = parameters.ToList();
+            var query = "INSERT INTO [dbo].[" + tableName + "](";
+            var param = parameters.ToArray();
+            var numParams = param.Length - 1;
 
-            var query = "INSERT INTO [dbo].[" + tableName + "] (";
-
-            foreach (var parameter in lParameters)
+            for (var i = 0; i < numParams; i++)
             {
-                query += parameter.Name + ",";
+                query = string.Concat(query, "[", param[i].Name, "],");
             }
 
-            query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));
+            query = string.Concat(query, "[", param[numParams].Name, "]) VALUES (");
 
-            query += ") VALUES (";
-
-            foreach (var parameter in lParameters)
+            for (var i = 0; i < numParams; i++)
             {
-                query = string.Concat("@", parameter.Name, ",");
+                query = string.Concat("@", param[i].Name, ",");
             }
 
-            query = query.Remove(query.LastIndexOf(",", StringComparison.Ordinal));
-
-            query += ")";
+            query = string.Concat(query, "@", param[numParams].Name, ")");
 
             return query;
         }

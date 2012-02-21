@@ -10,6 +10,7 @@ namespace Monocle
         private static readonly IQueryFactory QueryGenerator = new MsSqlQueryFactory();
         private Guid _id;
 
+        [Column]
         public Guid Id
         {
             get { return _id; }

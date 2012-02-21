@@ -178,10 +178,11 @@ namespace Monocle
 
             var result = Execute<T>(string.Concat("select top 1 * from [", tableDef.TableName, "] where [id] = @id"), new[] { new Parameter("id", id) });
 
-            InternalCache.Add(cacheId, result);
-
             if (result != null)
+            {
+                InternalCache.Add(cacheId, result);
                 result.ExistsInDb = true;
+            }
 
             return result;
         }

@@ -22,10 +22,10 @@ namespace Monocle
 
         public void Profile(IDbProfiler profiler)
         {
-            _profiler = profiler;
+            //_profiler = profiler;
 
-            if (_profiler != null)
-                _isProfiling = true;
+            //if (_profiler != null)
+            //    _isProfiling = true;
         }
 
         private static SqlConnection CreateConnection(string connString)
@@ -37,13 +37,13 @@ namespace Monocle
         {
             _sqlConn.Open();
 
-            if (_isProfiling)
-                _profiler.StartProfiling(_command);
+            //if (_isProfiling)
+            //    _profiler.StartProfiling(_command);
 
             var dt = new DataTable("table");
 
             var da = new SqlDataAdapter(_command);
-            
+
             da.Fill(dt);
 
             _sqlConn.Close();
@@ -55,8 +55,8 @@ namespace Monocle
         {
             _sqlConn.Open();
 
-            if (_isProfiling)
-                _profiler.StartProfiling(_command);
+            //if (_isProfiling)
+            //    _profiler.StartProfiling(_command);
 
             return _command.ExecuteReader(CommandBehavior.CloseConnection);
         }
@@ -65,16 +65,16 @@ namespace Monocle
         {
             _sqlConn.Open();
 
-            if (_isProfiling)
-                _profiler.StartProfiling(_command);
+            //if (_isProfiling)
+            //    _profiler.StartProfiling(_command);
 
             _command.ExecuteNonQuery();
 
-            if (_isProfiling)
-            {
-                _profiler.EndProfiling();
-                DbProfiling.AddResult(_profiler.Results);
-            }
+            //if (_isProfiling)
+            //{
+            //    _profiler.EndProfiling();
+            //    DbProfiling.AddResult(_profiler.Results);
+            //}
 
             _sqlConn.Close();
         }

@@ -91,7 +91,7 @@ namespace Monocle
             return new PropertyDescriptorCollection(toMap.ToArray());
         }
 
-        private static bool ShouldMapProperty(TableDefinition tableDef, PropertyDescriptor p)
+        private static bool ShouldMapProperty(TableDefinition tableDef, MemberDescriptor p)
         {
             if (tableDef.ColumnsAreAutoMapped)
             {
@@ -151,6 +151,7 @@ namespace Monocle
                 propertyInfo = BuildPropertyInfo(objInstance);
                 ReadColumns[typeName] = propertyInfo;
             }
+
             return propertyInfo;
         }
 
@@ -171,7 +172,7 @@ namespace Monocle
             if (colAttr == null)
                 return;
 
-            var key = prop.Name.ToLower();
+            var key = prop.Name;
             var typeKey = typeName + key;
             int ord;
 
@@ -226,18 +227,11 @@ namespace Monocle
                 cols.Add(reader.GetName(i).ToLower(), i);
             }
 
-            var lst = new List<object[]>();
-
             while (reader.Read())
             {
                 var objArr = new object[fldCnt];
                 reader.GetValues(objArr);
-                lst.Add(objArr);
-            }
-
-            foreach (var p in lst.AsParallel())
-            {
-                yield return Transform<T>(cols, p);
+                yield return Transform<T>(cols, objArr);
             }
 
             reader.Close();
@@ -275,7 +269,7 @@ namespace Monocle
 
             foreach (PropertyDescriptor prop in propertyInfo.AsParallel())
             {
-                var key = prop.Name.ToLower();
+                var key = prop.Name;
                 int ordinal;
 
                 if (!cols.TryGetValue(key, out ordinal))

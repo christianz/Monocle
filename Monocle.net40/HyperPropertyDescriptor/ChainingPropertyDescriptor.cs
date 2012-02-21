@@ -6,6 +6,7 @@ namespace Monocle.HyperPropertyDescriptor
     public abstract class ChainingPropertyDescriptor : PropertyDescriptor
     {
         private readonly PropertyDescriptor _root;
+        private readonly string _loweredName;
 
         protected PropertyDescriptor Root
         {
@@ -16,6 +17,7 @@ namespace Monocle.HyperPropertyDescriptor
             : base(root)
         {
             _root = root;
+            _loweredName = root.Name.ToLower();
         }
 
         public override void AddValueChanged(object component, EventHandler handler)
@@ -105,7 +107,7 @@ namespace Monocle.HyperPropertyDescriptor
 
         public override string Name
         {
-            get { return Root.Name; }
+            get { return _loweredName; }
         }
 
         public override Type PropertyType

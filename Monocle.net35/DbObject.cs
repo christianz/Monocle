@@ -62,7 +62,7 @@ namespace Monocle
 
                 if (value is DateTime)
                 {
-                    var dtVal = (DateTime) value;
+                    var dtVal = (DateTime)value;
 
                     if (dtVal == DateTime.MinValue)
                         value = null;
@@ -75,7 +75,7 @@ namespace Monocle
 
         public IEnumerable<Parameter> GetParameters<T>() where T : DbObject
         {
-            return GetParameters(typeof (T), (T) this);
+            return GetParameters(typeof(T), (T)this);
         }
 
         /// <summary>
@@ -91,18 +91,18 @@ namespace Monocle
             return new PropertyDescriptorCollection(toMap.ToArray());
         }
 
-        private static bool ShouldMapProperty(TableDefinition tableDef, PropertyDescriptor p)
+        private static bool ShouldMapProperty(TableDefinition tableDef, MemberDescriptor p)
         {
             if (tableDef.ColumnsAreAutoMapped)
             {
-                var unmappedAttr = p.Attributes[typeof (UnmappedAttribute)];
+                var unmappedAttr = p.Attributes[typeof(UnmappedAttribute)];
 
                 if (unmappedAttr != null)
                     return false;
             }
             else
             {
-                var colAttr = p.Attributes[typeof (ColumnAttribute)];
+                var colAttr = p.Attributes[typeof(ColumnAttribute)];
 
                 if (colAttr == null || ((ColumnAttribute)colAttr).Identity)
                     return false;
@@ -120,7 +120,7 @@ namespace Monocle
         /// <returns>A new instance of T with the values from the DataRow.</returns>
         private static T Transform<T>(IDataRecord objData) where T : new()
         {
-            var type = typeof (T);
+            var type = typeof(T);
 
             if (type.IsValueType)
             {
@@ -151,12 +151,13 @@ namespace Monocle
                 propertyInfo = BuildPropertyInfo(objInstance);
                 ReadColumns[typeName] = propertyInfo;
             }
+
             return propertyInfo;
         }
 
         private static void CacheTypeDescriptor(Type type, string typeName)
         {
-            if (CachedHyperTypes.Contains(typeName)) 
+            if (CachedHyperTypes.Contains(typeName))
                 return;
 
             CachedHyperTypes.Add(typeName);
@@ -165,13 +166,13 @@ namespace Monocle
 
         private static void SetProperty<T>(IDataRecord objData, T objInstance, string typeName, PropertyDescriptor prop) where T : new()
         {
-            var objColAttr = prop.Attributes[typeof (ColumnAttribute)];
+            var objColAttr = prop.Attributes[typeof(ColumnAttribute)];
             var colAttr = objColAttr as ColumnAttribute;
 
             if (colAttr == null)
                 return;
 
-            var key = prop.Name.ToLower();
+            var key = prop.Name;
             var typeKey = typeName + key;
             int ord;
 
@@ -226,18 +227,11 @@ namespace Monocle
                 cols.Add(reader.GetName(i).ToLower(), i);
             }
 
-            var lst = new List<object[]>();
-
             while (reader.Read())
             {
                 var objArr = new object[fldCnt];
                 reader.GetValues(objArr);
-                lst.Add(objArr);
-            }
-
-            foreach (var p in lst)
-            {
-                yield return Transform<T>(cols, p);
+                yield return Transform<T>(cols, objArr);
             }
 
             reader.Close();
@@ -275,7 +269,7 @@ namespace Monocle
 
             foreach (PropertyDescriptor prop in propertyInfo)
             {
-                var key = prop.Name.ToLower();
+                var key = prop.Name;
                 int ordinal;
 
                 if (!cols.TryGetValue(key, out ordinal))

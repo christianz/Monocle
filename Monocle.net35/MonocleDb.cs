@@ -129,7 +129,16 @@ namespace Monocle
             if (!(parameters is IEnumerable<Parameter>))
                 parameters = GetDbParameters(parameters);
 
-            return DbObject.FromParameters<T>(ExecuteReader(cmdText, true, (IEnumerable<Parameter>)parameters));
+            var reader = ExecuteReader(cmdText, true, (IEnumerable<Parameter>)parameters);
+
+            try
+            {
+                return DbObject.FromParameters<T>(reader);
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         public static T Execute<T>(string cmdText) where T : class, new()
@@ -216,7 +225,16 @@ namespace Monocle
 
         private static T Execute<T>(string cmdText, IEnumerable<Parameter> parameters) where T : class, new()
         {
-            return DbObject.FromParameters<T>(ExecuteReader(cmdText, true, parameters));
+            var reader = ExecuteReader(cmdText, true, parameters);
+
+            try
+            {
+                return DbObject.FromParameters<T>(reader);
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         private static bool IsStoredProcedure(string cmdText)

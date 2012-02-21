@@ -8,24 +8,36 @@ namespace Monocle
     public abstract class Persistable : DbObject
     {
         private static readonly IQueryFactory QueryGenerator = new MsSqlQueryFactory();
+        private Guid _id;
 
-        public Guid Id { get; set; }
+        public Guid Id
+        {
+            get { return _id; }
+            set
+            {
+                _id = value;
+                UpdateCacheId();
+            }
+        }
 
         internal bool? ExistsInDb { get; set; }
-        internal TableDefinition TableDef { get; set; }
+        internal TableDefinition TableDef { get; private set; }
 
         private readonly Type _type;
 
-        protected string CacheId
+        private void UpdateCacheId()
         {
-            get { return TableDef + "_" + Id; }
+            CacheId = TableDef + "_" + Id;
         }
+
+        protected string CacheId { get; private set; }
 
         protected Persistable()
         {
             _type = GetType();
 
             TableDef = TableDefinition.FromType(_type);
+            UpdateCacheId();
         }
 
         public new virtual void Save()

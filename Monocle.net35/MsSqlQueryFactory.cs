@@ -62,7 +62,7 @@ namespace Monocle
 
             for (var i = 0; i < numParams; i++)
             {
-                query = string.Concat("@", param[i].Name, ",");
+                query = string.Concat(query, "@", param[i].Name, ",");
             }
 
             query = string.Concat(query, "@", param[numParams].Name, ")");

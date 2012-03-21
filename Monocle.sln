@@ -22,8 +22,8 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Debug|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Debug|Mixed Platforms.Build.0 = Release|Any CPU
+		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
 		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Release|Any CPU.Build.0 = Release|Any CPU
@@ -32,8 +32,8 @@ Global
 		{BB32AE76-E927-4CEF-B15D-E2F30D4615D2}.Release|x86.ActiveCfg = Release|Any CPU
 		{DC02475C-451E-409B-8050-ADEFD130D954}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DC02475C-451E-409B-8050-ADEFD130D954}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DC02475C-451E-409B-8050-ADEFD130D954}.Debug|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{DC02475C-451E-409B-8050-ADEFD130D954}.Debug|Mixed Platforms.Build.0 = Release|Any CPU
+		{DC02475C-451E-409B-8050-ADEFD130D954}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{DC02475C-451E-409B-8050-ADEFD130D954}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
 		{DC02475C-451E-409B-8050-ADEFD130D954}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{DC02475C-451E-409B-8050-ADEFD130D954}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DC02475C-451E-409B-8050-ADEFD130D954}.Release|Any CPU.Build.0 = Release|Any CPU

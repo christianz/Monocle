@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
@@ -47,7 +48,11 @@ namespace Monocle
 
         public static void Initialize(string connectionString, bool useCaching, bool useProfiling, IMonocleLogWriter logWriter)
         {
-            _connection = new SqlConnection(connectionString);
+            var connStr = new DbConnectionStringBuilder { ConnectionString = connectionString };
+
+            connStr["MultipleActiveResultSets"] = true;
+
+            _connection = new SqlConnection(connStr.ConnectionString);
             _connection.Open();
 
             _useProfiling = useProfiling;

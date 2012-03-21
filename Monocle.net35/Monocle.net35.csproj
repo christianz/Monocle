@@ -63,7 +63,6 @@
     <Compile Include="Profiler\DbProfilingResults.cs" />
     <Compile Include="Profiler\IDbProfiler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="MsSqlCommand.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="Utils\TableDefinition.cs" />
     <Compile Include="Utils\TypeHelper.cs" />

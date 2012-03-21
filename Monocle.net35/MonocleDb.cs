@@ -16,7 +16,7 @@ namespace Monocle
         private const int WhereClauseDefaultStringBuilderSize = 64;
 
         private static bool _useProfiling;
-        private static string _connectionString;
+        private static SqlConnection _connection;
         private static IMonocleLogWriter _logWriter;
         private static readonly IMonocleCache InternalCache = new MonocleDictionaryCache();
 
@@ -47,7 +47,9 @@ namespace Monocle
 
         public static void Initialize(string connectionString, bool useCaching, bool useProfiling, IMonocleLogWriter logWriter)
         {
-            _connectionString = connectionString;
+            _connection = new SqlConnection(connectionString);
+            _connection.Open();
+
             _useProfiling = useProfiling;
             _logWriter = logWriter;
         }
@@ -68,21 +70,22 @@ namespace Monocle
 
             var cmd = new SqlCommand(cmdText)
             {
-                CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text
+                CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text,
+                Connection = _connection
             };
 
             foreach (var p in parameters ?? new List<Parameter>(0))
                 cmd.Parameters.AddWithValue(p.Name, p.Value);
 
-            var sqlRunner = new MsSqlCommand(_connectionString, cmd);
+            WriteToLog(cmd);
 
-            if (_useProfiling)
-            {
-                var profiler = new MsSqlProfiler();
-                sqlRunner.Profile(profiler);
-            }
+            var dt = new DataTable("table");
 
-            return sqlRunner.ExecuteDataTable();
+            var da = new SqlDataAdapter(cmd);
+
+            da.Fill(dt);
+
+            return dt;
         }
 
         public static IEnumerable<T> List<T>() where T : new()
@@ -174,9 +177,15 @@ namespace Monocle
             var cacheObj = InternalCache.Get<T>(cacheId);
 
             if (cacheObj != null)
-                return cacheObj;
+            {
+                WriteToLog("Found cached item (id " + cacheId + ").");
 
-            var result = Execute<T>(string.Concat("select top 1 * from [", tableDef.TableName, "] where [id] = @id"), new[] { new Parameter("id", id) });
+                return cacheObj;
+            }
+
+            var strSelect = (string.Concat("select top 1 * from [", tableDef.TableName, "] where [id] = @id"));
+
+            var result = Execute<T>(strSelect, new[] { new Parameter("id", id) });
 
             InternalCache.Add(cacheId, result);
 
@@ -205,24 +214,19 @@ namespace Monocle
 
             var cmd = new SqlCommand(cmdText)
             {
-                CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text
+                CommandType = isStoredProcedure ? CommandType.StoredProcedure : CommandType.Text,
+                Connection = _connection
             };
 
             foreach (var p in parameters ?? new List<Parameter>(0))
                 cmd.Parameters.AddWithValue(p.Name, p.Value);
 
-            var sqlRunner = new MsSqlCommand(_connectionString, cmd);
-
-            if (_useProfiling)
-            {
-                var profiler = new MsSqlProfiler();
-                sqlRunner.Profile(profiler);
-            }
+            WriteToLog(cmd);
 
             if (expectsResults)
-                return sqlRunner.ExecuteReader();
+                return cmd.ExecuteReader();
 
-            sqlRunner.ExecuteNonCommand();
+            cmd.ExecuteNonQuery();
             return null;
         }
 
@@ -283,6 +287,9 @@ namespace Monocle
 
         private static void WriteToLog(SqlCommand cmd)
         {
+            if (_logWriter == null)
+                return;
+
             var cmdText = cmd.CommandText;
 
             foreach (Parameter param in cmd.Parameters)
@@ -295,6 +302,9 @@ namespace Monocle
 
         private static void WriteToLog(string text)
         {
+            if (_logWriter == null)
+                return;
+
             _logWriter.Write(DateTime.Now, text);
         }
 

@@ -59,7 +59,7 @@ namespace Monocle
             }
         }
 
-        public IEnumerable<Parameter> GetParameters<T>() where T : DbObject
+        internal IEnumerable<Parameter> GetParameters<T>() where T : DbObject
         {
             return GetParameters(typeof(T), (T)this);
         }
@@ -190,12 +190,15 @@ namespace Monocle
         /// <typeparam name="T">The type we want to transform the records to</typeparam>
         /// <param name="reader">A DataReader containing a collection of records that are transformed</param>
         /// <returns>An IEnumerable containing a collection of instances of type T</returns>
-        public static IEnumerable<T> ListFromParameters<T>(IDataReader reader) where T : new()
+        internal static IEnumerable<T> ListFromParameters<T>(IDataReader reader) where T : new()
         {
             while (reader.Read())
             {
                 yield return FromParameters<T>(reader);
             }
+
+            if (!reader.IsClosed)
+                reader.Close();
         }
 
         private static string GetTypeName(Type type)

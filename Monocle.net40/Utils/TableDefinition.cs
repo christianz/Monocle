@@ -23,8 +23,11 @@ namespace Monocle.Utils
         {
             TableDefinition tableDef;
 
-            if (!ClassTableDictionary.TryGetValue(t, out tableDef))
-                ClassTableDictionary[t] = tableDef = BuildTableDefinition(t);
+            lock (ClassTableDictionary)
+            {
+                if (!ClassTableDictionary.TryGetValue(t, out tableDef))
+                    ClassTableDictionary[t] = tableDef = BuildTableDefinition(t);
+            }
 
             return tableDef;
         }

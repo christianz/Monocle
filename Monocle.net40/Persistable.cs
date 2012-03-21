@@ -31,7 +31,7 @@ namespace Monocle
             CacheId = TableDef + "_" + Id;
         }
 
-        protected string CacheId { get; private set; }
+        internal string CacheId { get; private set; }
 
         protected Persistable()
         {

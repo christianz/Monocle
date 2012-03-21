@@ -48,7 +48,7 @@ namespace Monocle
 
                 if (value is DateTime)
                 {
-                    var dtVal = (DateTime) value;
+                    var dtVal = (DateTime)value;
 
                     if (dtVal == DateTime.MinValue)
                         value = null;
@@ -59,9 +59,9 @@ namespace Monocle
             }
         }
 
-        public IEnumerable<Parameter> GetParameters<T>() where T : DbObject
+        internal IEnumerable<Parameter> GetParameters<T>() where T : DbObject
         {
-            return GetParameters(typeof (T), (T) this);
+            return GetParameters(typeof(T), (T)this);
         }
 
         /// <summary>
@@ -81,14 +81,14 @@ namespace Monocle
         {
             if (tableDef.ColumnsAreAutoMapped)
             {
-                var unmappedAttr = p.Attributes[typeof (UnmappedAttribute)];
+                var unmappedAttr = p.Attributes[typeof(UnmappedAttribute)];
 
                 if (unmappedAttr != null)
                     return false;
             }
             else
             {
-                var colAttr = p.Attributes[typeof (ColumnAttribute)];
+                var colAttr = p.Attributes[typeof(ColumnAttribute)];
 
                 if (colAttr == null || ((ColumnAttribute)colAttr).Identity)
                     return false;
@@ -112,7 +112,7 @@ namespace Monocle
 
         private static void CacheTypeDescriptor(Type type, string typeName)
         {
-            if (CachedHyperTypes.Contains(typeName)) 
+            if (CachedHyperTypes.Contains(typeName))
                 return;
 
             CachedHyperTypes.Add(typeName);
@@ -141,7 +141,7 @@ namespace Monocle
         private static Dictionary<string, int> CacheColumnDefinitions(IDataRecord reader, string typeName)
         {
             Dictionary<string, int> cols;
-            
+
             if (!CachedColumnDefs.TryGetValue(typeName, out cols))
             {
                 var fldCnt = reader.FieldCount;
@@ -164,7 +164,7 @@ namespace Monocle
         /// <typeparam name="T">The type we want to transform the DataRow properties to.</typeparam>
         /// <param name="reader">A DataReader containing 1 record (if it contains more, an exception is thrown) to transform into an instance of type T</param>
         /// <returns>An instance of type T with the properties filled from the DataReader</returns>
-        internal static T FromParameters<T>(IDataReader reader) where T :  new()
+        internal static T FromParameters<T>(IDataReader reader) where T : new()
         {
             var type = typeof(T);
 
@@ -190,12 +190,14 @@ namespace Monocle
         /// <typeparam name="T">The type we want to transform the records to</typeparam>
         /// <param name="reader">A DataReader containing a collection of records that are transformed</param>
         /// <returns>An IEnumerable containing a collection of instances of type T</returns>
-        public static IEnumerable<T> ListFromParameters<T>(IDataReader reader) where T : new()
+        internal static IEnumerable<T> ListFromParameters<T>(IDataReader reader) where T : new()
         {
             while (reader.Read())
             {
                 yield return FromParameters<T>(reader);
             }
+
+            reader.Close();
         }
 
         private static string GetTypeName(Type type)
@@ -215,9 +217,9 @@ namespace Monocle
             var typeName = GetTypeName(type);
 
             CacheTypeDescriptor(type, typeName);
-            
+
             var objInstance = ParameterlessConstructor<T>.Create();
-            
+
             var propertyInfo = GetPropertyDescriptors(objInstance, typeName);
 
             foreach (PropertyDescriptor prop in propertyInfo.AsParallel())

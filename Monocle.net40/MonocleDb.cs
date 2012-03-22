@@ -109,7 +109,7 @@ namespace Monocle
         {
             var dt = ExecuteReader(cmdText, true, GetDbParameters(parameters));
 
-            return DbObject.ListFromParameters<T>(dt);
+            return DbObject.ListFromParameters<T>(dt).ToList();
         }
 
         public static void Execute(string cmdText)

@@ -1,0 +1,6 @@
+# Ignore solution files
+*.sln
+*.suo
+bin
+obj
+_*
